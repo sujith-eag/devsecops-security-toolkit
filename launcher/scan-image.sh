@@ -64,8 +64,14 @@ if ! docker image inspect "$SCANNER_IMAGE" >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "Pulling image: $IMAGE_REF"
-docker pull "$IMAGE_REF"
+if docker image inspect "$IMAGE_REF" >/dev/null 2>&1; then
+  echo "Image exists locally, skipping pull: $IMAGE_REF"
+  IMAGE_SOURCE="local"
+else
+  echo "Image not found locally, pulling: $IMAGE_REF"
+  docker pull "$IMAGE_REF"
+  IMAGE_SOURCE="registry"
+fi
 
 REPO_DIGEST="$(docker inspect --format='{{if .RepoDigests}}{{index .RepoDigests 0}}{{end}}' "$IMAGE_REF" || true)"
 IMAGE_ID="$(docker inspect --format='{{.Id}}' "$IMAGE_REF")"
@@ -100,6 +106,7 @@ fix_permissions "$CACHE_BASE/grype"
 cat > "$METADATA_FILE" <<EOF
 {
   "image_ref": "$IMAGE_REF",
+  "image_source": "$IMAGE_SOURCE",
   "repo_digest": "$REPO_DIGEST",
   "digest_value": "$DIGEST_VALUE",
   "short_digest": "$SHORT_DIGEST",
