@@ -26,7 +26,17 @@ CACHE_BASE="$BASE_DIR/cache"
 SCANNER_IMAGE="image-sbom-vuln-scanner:latest"
 TAR_RETENTION_MINUTES=1440
 
+if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]; then
+  HOST_UID="$(id -u "$SUDO_USER")"
+  HOST_GID="$(id -g "$SUDO_USER")"
+else
+  HOST_UID="$(id -u)"
+  HOST_GID="$(id -g)"
+fi
+
 mkdir -p "$WORK_BASE" "$RESULTS_BASE" "$LOG_BASE" "$CACHE_BASE/grype"
+
+chmod -R 777 "$BASE_DIR"
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "ERROR: docker is not installed or not available"
@@ -62,6 +72,7 @@ METADATA_FILE="$RESULT_DIR/metadata.json"
 SCAN_LOG="$RESULT_DIR/host-scan.log"
 
 mkdir -p "$WORK_DIR" "$RESULT_DIR"
+chmod -R 777 "$WORK_DIR" "$RESULT_DIR" "$CACHE_BASE/grype"
 
 cat > "$METADATA_FILE" <<EOF
 {
@@ -75,6 +86,8 @@ cat > "$METADATA_FILE" <<EOF
   "image_created": "$IMAGE_CREATED",
   "scan_timestamp_utc": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
   "host_architecture": "$(uname -m)",
+  "host_uid": "$HOST_UID",
+  "host_gid": "$HOST_GID",
   "docker_version": "$(docker --version)",
   "scanner_image": "$SCANNER_IMAGE",
   "base_dir": "$BASE_DIR",
@@ -84,30 +97,41 @@ cat > "$METADATA_FILE" <<EOF
 }
 EOF
 
+jq . "$METADATA_FILE" > "$METADATA_FILE.tmp" && mv "$METADATA_FILE.tmp" "$METADATA_FILE"
+
 {
   echo "Image reference: $IMAGE_REF"
   echo "Digest: $DIGEST_VALUE"
   echo "Run dir: $RUN_DIR"
   echo "Base dir: $BASE_DIR"
+  echo "Host UID:GID: $HOST_UID:$HOST_GID"
   echo "Work dir: $WORK_DIR"
   echo "Result dir: $RESULT_DIR"
   echo "Saving image tar..."
 } | tee "$SCAN_LOG"
 
 docker save "$IMAGE_REF" -o "$IMAGE_TAR"
+chmod 666 "$IMAGE_TAR"
 
 echo "Running scanner container..." | tee -a "$SCAN_LOG"
 
 docker run --rm \
+  --user "$HOST_UID:$HOST_GID" \
   -v "$WORK_DIR:/input:ro" \
   -v "$RESULT_DIR:/results" \
-  -v "$CACHE_BASE/grype:/root/.cache/grype" \
+  -v "$CACHE_BASE/grype:/cache/grype" \
+  -e XDG_CACHE_HOME=/cache \
+  -e GRYPE_DB_CACHE_DIR=/cache/grype/db \
   "$SCANNER_IMAGE" \
   /scanner/scan-from-tar.sh /input/image.tar /results
+
+chmod -R 777 "$RESULT_DIR" "$CACHE_BASE/grype"
 
 echo "Cleaning tar files older than 24 hours" | tee -a "$SCAN_LOG"
 find "$WORK_BASE" -name "image.tar" -type f -mmin +"$TAR_RETENTION_MINUTES" -delete
 find "$WORK_BASE" -mindepth 1 -type d -empty -delete
+
+chmod -R 777 "$BASE_DIR"
 
 echo "Scan completed successfully"
 echo "Results: $RESULT_DIR"

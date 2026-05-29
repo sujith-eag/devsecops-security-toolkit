@@ -19,6 +19,11 @@ if [ ! -d "$RESULT_DIR" ]; then
   exit 1
 fi
 
+if [ ! -w "$RESULT_DIR" ]; then
+  echo "ERROR: result directory is not writable: $RESULT_DIR"
+  exit 1
+fi
+
 SBOM_FILE="$RESULT_DIR/sbom-cyclonedx.json"
 GRYPE_IMAGE_FILE="$RESULT_DIR/grype-image-vulns.json"
 GRYPE_SBOM_FILE="$RESULT_DIR/grype-sbom-vulns.json"
@@ -44,6 +49,9 @@ vuln_summary() {
   echo "Scanner started at: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
   echo "Input tar: $IMAGE_TAR"
   echo "Result dir: $RESULT_DIR"
+  echo "Running as UID:GID $(id -u):$(id -g)"
+  echo "XDG_CACHE_HOME=${XDG_CACHE_HOME:-}"
+  echo "GRYPE_DB_CACHE_DIR=${GRYPE_DB_CACHE_DIR:-}"
   echo
   echo "Syft version:"
   syft version
@@ -85,6 +93,8 @@ vuln_summary() {
   echo "SBOM package count: $(jq '.components | length' "$SBOM_FILE")"
   echo "Image scan vulnerabilities: $(vuln_summary "$GRYPE_IMAGE_FILE")"
   echo "SBOM scan vulnerabilities:  $(vuln_summary "$GRYPE_SBOM_FILE")"
+
+  chmod -R 777 "$RESULT_DIR" || true
 
   echo
   echo "Scanner completed at: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
