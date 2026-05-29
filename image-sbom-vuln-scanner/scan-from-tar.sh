@@ -69,8 +69,8 @@ vuln_summary() {
 
   echo "Running Grype scan against image tar..."
   grype "docker-archive:$IMAGE_TAR" \
-    -o "json=$GRYPE_IMAGE_FILE" \
-    -o "table=$GRYPE_IMAGE_TABLE_FILE"
+      -o "json=$GRYPE_IMAGE_FILE" \
+      -o "table=$GRYPE_IMAGE_TABLE_FILE"
 
   echo "Formatting Grype image JSON..."
   pretty_json "$GRYPE_IMAGE_FILE"
@@ -94,7 +94,7 @@ vuln_summary() {
   echo "Image scan vulnerabilities: $(vuln_summary "$GRYPE_IMAGE_FILE")"
   echo "SBOM scan vulnerabilities:  $(vuln_summary "$GRYPE_SBOM_FILE")"
 
-  chmod -R 777 "$RESULT_DIR" || true
+  chmod -R u+rwX,g+rwX "$RESULT_DIR" || true
 
   echo
   echo "Scanner completed at: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"

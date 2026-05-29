@@ -34,12 +34,33 @@ else
   HOST_GID="$(id -g)"
 fi
 
-mkdir -p "$WORK_BASE" "$RESULTS_BASE" "$LOG_BASE" "$CACHE_BASE/grype"
+fix_permissions() {
+  local path="$1"
 
-chmod -R 777 "$BASE_DIR"
+  if [ ! -e "$path" ]; then
+    return 0
+  fi
+
+  if [ "$(id -u)" -eq 0 ]; then
+    chown -R "$HOST_UID:$HOST_GID" "$path"
+  fi
+
+  chmod -R u+rwX,g+rwX "$path"
+}
+
+umask 0002
+
+mkdir -p "$WORK_BASE" "$RESULTS_BASE" "$LOG_BASE" "$CACHE_BASE/grype"
+fix_permissions "$BASE_DIR"
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "ERROR: docker is not installed or not available"
+  exit 1
+fi
+
+if ! docker image inspect "$SCANNER_IMAGE" >/dev/null 2>&1; then
+  echo "ERROR: scanner image not found locally: $SCANNER_IMAGE"
+  echo "Build it first, for example: docker build -t $SCANNER_IMAGE -f dockerfile ."
   exit 1
 fi
 
@@ -72,7 +93,9 @@ METADATA_FILE="$RESULT_DIR/metadata.json"
 SCAN_LOG="$RESULT_DIR/host-scan.log"
 
 mkdir -p "$WORK_DIR" "$RESULT_DIR"
-chmod -R 777 "$WORK_DIR" "$RESULT_DIR" "$CACHE_BASE/grype"
+fix_permissions "$WORK_DIR"
+fix_permissions "$RESULT_DIR"
+fix_permissions "$CACHE_BASE/grype"
 
 cat > "$METADATA_FILE" <<EOF
 {
@@ -98,6 +121,7 @@ cat > "$METADATA_FILE" <<EOF
 EOF
 
 jq . "$METADATA_FILE" > "$METADATA_FILE.tmp" && mv "$METADATA_FILE.tmp" "$METADATA_FILE"
+fix_permissions "$RESULT_DIR"
 
 {
   echo "Image reference: $IMAGE_REF"
@@ -111,7 +135,7 @@ jq . "$METADATA_FILE" > "$METADATA_FILE.tmp" && mv "$METADATA_FILE.tmp" "$METADA
 } | tee "$SCAN_LOG"
 
 docker save "$IMAGE_REF" -o "$IMAGE_TAR"
-chmod 666 "$IMAGE_TAR"
+fix_permissions "$WORK_DIR"
 
 echo "Running scanner container..." | tee -a "$SCAN_LOG"
 
@@ -125,13 +149,14 @@ docker run --rm \
   "$SCANNER_IMAGE" \
   /scanner/scan-from-tar.sh /input/image.tar /results
 
-chmod -R 777 "$RESULT_DIR" "$CACHE_BASE/grype"
+fix_permissions "$RESULT_DIR"
+fix_permissions "$CACHE_BASE/grype"
 
 echo "Cleaning tar files older than 24 hours" | tee -a "$SCAN_LOG"
 find "$WORK_BASE" -name "image.tar" -type f -mmin +"$TAR_RETENTION_MINUTES" -delete
 find "$WORK_BASE" -mindepth 1 -type d -empty -delete
 
-chmod -R 777 "$BASE_DIR"
+fix_permissions "$BASE_DIR"
 
 echo "Scan completed successfully"
 echo "Results: $RESULT_DIR"
