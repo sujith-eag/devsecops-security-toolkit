@@ -25,6 +25,7 @@ CACHE_BASE="$BASE_DIR/cache"
 
 SCANNER_IMAGE="image-sbom-vuln-scanner:latest"
 TAR_RETENTION_MINUTES=1440
+REPORTER_IMAGE="reporter-analyzer:latest"
 
 if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]; then
   HOST_UID="$(id -u "$SUDO_USER")"
@@ -167,3 +168,26 @@ fix_permissions "$BASE_DIR"
 
 echo "Scan completed successfully"
 echo "Results: $RESULT_DIR"
+
+
+
+# Reporter section
+
+ANALYSIS_DIR="$RESULT_DIR/analysis"
+
+echo "Preparing analysis output directory..." | tee -a "$SCAN_LOG"
+mkdir -p "$ANALYSIS_DIR"
+chown -R "$HOST_UID:$HOST_GID" "$ANALYSIS_DIR"
+chmod -R u+rwX,g+rwX "$ANALYSIS_DIR"
+
+echo "Running reporter/analyzer container..." | tee -a "$SCAN_LOG"
+
+docker run --rm \
+  --user "$HOST_UID:$HOST_GID" \
+  -v "$RESULT_DIR:/input:ro" \
+  -v "$ANALYSIS_DIR:/output" \
+  "$REPORTER_IMAGE" \
+  python -m analyzer.main /input /output
+
+chown -R "$HOST_UID:$HOST_GID" "$ANALYSIS_DIR"
+chmod -R u+rwX,g+rwX "$ANALYSIS_DIR"
