@@ -24,8 +24,17 @@ LOG_BASE="$BASE_DIR/logs"
 CACHE_BASE="$BASE_DIR/cache"
 
 SCANNER_IMAGE="image-sbom-vuln-scanner:latest"
-TAR_RETENTION_MINUTES=1440
 REPORTER_IMAGE="reporter-analyzer:latest"
+TAR_RETENTION_MINUTES=1440
+
+ARTIFACT_TYPE="${ARTIFACT_TYPE:-container_image}"
+ARTIFACT_ROLE="${ARTIFACT_ROLE:-}"
+PROJECT_ID="${PROJECT_ID:-}"
+PROJECT_NAME="${PROJECT_NAME:-}"
+PROJECT_TYPE="${PROJECT_TYPE:-}"
+PROJECT_REPOSITORY="${PROJECT_REPOSITORY:-}"
+PROJECT_BRANCH="${PROJECT_BRANCH:-}"
+PROJECT_COMMIT="${PROJECT_COMMIT:-}"
 
 if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]; then
   HOST_UID="$(id -u "$SUDO_USER")"
@@ -36,28 +45,20 @@ else
 fi
 
 fix_permissions() {
-  local path="$1"
-
-  if [ ! -e "$path" ]; then
-    return 0
+  local target="$1"
+  if [ -e "$target" ]; then
+    chown -R "$HOST_UID:$HOST_GID" "$target" || true
+    chmod -R u+rwX,g+rwX "$target" || true
   fi
-
-  if [ "$(id -u)" -eq 0 ]; then
-    chown -R "$HOST_UID:$HOST_GID" "$path"
-  fi
-
-  chmod -R u+rwX,g+rwX "$path"
 }
-
-umask 0002
-
-mkdir -p "$WORK_BASE" "$RESULTS_BASE" "$LOG_BASE" "$CACHE_BASE/grype"
-fix_permissions "$BASE_DIR"
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "ERROR: docker is not installed or not available"
   exit 1
 fi
+
+mkdir -p "$WORK_BASE" "$RESULTS_BASE" "$LOG_BASE" "$CACHE_BASE/grype"
+fix_permissions "$BASE_DIR"
 
 if ! docker image inspect "$SCANNER_IMAGE" >/dev/null 2>&1; then
   echo "ERROR: scanner image not found locally: $SCANNER_IMAGE"
@@ -90,49 +91,84 @@ DIGEST_ALGO="${DIGEST_VALUE%%:*}"
 DIGEST_HASH="${DIGEST_VALUE#*:}"
 SHORT_DIGEST="${DIGEST_ALGO}_${DIGEST_HASH:0:12}"
 
+IMAGE_REF_NO_DIGEST="${IMAGE_REF%%@*}"
+IMAGE_LAST_PART="${IMAGE_REF_NO_DIGEST##*/}"
+if [[ "$IMAGE_LAST_PART" == *":"* ]]; then
+  IMAGE_TAG="${IMAGE_LAST_PART##*:}"
+  IMAGE_NAME="${IMAGE_REF_NO_DIGEST%:*}"
+else
+  IMAGE_TAG=""
+  IMAGE_NAME="$IMAGE_REF_NO_DIGEST"
+fi
+
 SAFE_IMAGE_REF="$(echo "$IMAGE_REF" | sed 's#[/:@]#_#g' | sed 's#[^A-Za-z0-9_.-]#_#g')"
 RUN_DIR="${SAFE_IMAGE_REF}__${SHORT_DIGEST}"
+ARTIFACT_ID="$RUN_DIR"
 
 WORK_DIR="$WORK_BASE/$RUN_DIR"
 RESULT_DIR="$RESULTS_BASE/$RUN_DIR"
+ANALYSIS_DIR="$RESULT_DIR/analysis"
 IMAGE_TAR="$WORK_DIR/image.tar"
 METADATA_FILE="$RESULT_DIR/metadata.json"
 SCAN_LOG="$RESULT_DIR/host-scan.log"
 
-mkdir -p "$WORK_DIR" "$RESULT_DIR"
+mkdir -p "$WORK_DIR" "$RESULT_DIR" "$ANALYSIS_DIR"
 fix_permissions "$WORK_DIR"
 fix_permissions "$RESULT_DIR"
 fix_permissions "$CACHE_BASE/grype"
 
 cat > "$METADATA_FILE" <<EOF
 {
-  "image_ref": "$IMAGE_REF",
-  "image_source": "$IMAGE_SOURCE",
-  "repo_digest": "$REPO_DIGEST",
-  "digest_value": "$DIGEST_VALUE",
-  "short_digest": "$SHORT_DIGEST",
-  "image_id": "$IMAGE_ID",
-  "image_os": "$IMAGE_OS",
-  "image_architecture": "$IMAGE_ARCH",
-  "image_created": "$IMAGE_CREATED",
-  "scan_timestamp_utc": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
-  "host_architecture": "$(uname -m)",
-  "host_uid": "$HOST_UID",
-  "host_gid": "$HOST_GID",
-  "docker_version": "$(docker --version)",
-  "scanner_image": "$SCANNER_IMAGE",
-  "base_dir": "$BASE_DIR",
-  "work_dir": "$WORK_DIR",
-  "result_dir": "$RESULT_DIR",
-  "image_tar": "$IMAGE_TAR"
+  "schema_version": "1.0",
+  "artifact_id": "$ARTIFACT_ID",
+  "artifact_type": "$ARTIFACT_TYPE",
+  "artifact_role": "$ARTIFACT_ROLE",
+  "project": {
+    "project_id": "$PROJECT_ID",
+    "project_name": "$PROJECT_NAME",
+    "project_type": "$PROJECT_TYPE",
+    "project_repository": "$PROJECT_REPOSITORY",
+    "project_branch": "$PROJECT_BRANCH",
+    "project_commit": "$PROJECT_COMMIT"
+  },
+  "image": {
+    "image_ref": "$IMAGE_REF",
+    "image_source": "$IMAGE_SOURCE",
+    "image_name": "$IMAGE_NAME",
+    "image_tag": "$IMAGE_TAG",
+    "repo_digest": "$REPO_DIGEST",
+    "digest_value": "$DIGEST_VALUE",
+    "short_digest": "$SHORT_DIGEST",
+    "image_id": "$IMAGE_ID",
+    "image_os": "$IMAGE_OS",
+    "image_architecture": "$IMAGE_ARCH",
+    "image_created": "$IMAGE_CREATED"
+  },
+  "scan": {
+    "scan_timestamp_utc": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+    "scanner_image": "$SCANNER_IMAGE",
+    "reporter_image": "$REPORTER_IMAGE",
+    "docker_version": "$(docker --version)",
+    "host_architecture": "$(uname -m)",
+    "host_uid": "$HOST_UID",
+    "host_gid": "$HOST_GID"
+  },
+  "paths": {
+    "base_dir": "$BASE_DIR",
+    "work_dir": "$WORK_DIR",
+    "result_dir": "$RESULT_DIR",
+    "analysis_dir": "$ANALYSIS_DIR",
+    "image_tar": "$IMAGE_TAR"
+  }
 }
 EOF
 
-jq . "$METADATA_FILE" > "$METADATA_FILE.tmp" && mv "$METADATA_FILE.tmp" "$METADATA_FILE"
-fix_permissions "$RESULT_DIR"
+fix_permissions "$METADATA_FILE"
 
 {
   echo "Image reference: $IMAGE_REF"
+  echo "Artifact ID: $ARTIFACT_ID"
+  echo "Artifact type: $ARTIFACT_TYPE"
   echo "Digest: $DIGEST_VALUE"
   echo "Run dir: $RUN_DIR"
   echo "Base dir: $BASE_DIR"
@@ -143,7 +179,7 @@ fix_permissions "$RESULT_DIR"
 } | tee "$SCAN_LOG"
 
 docker save "$IMAGE_REF" -o "$IMAGE_TAR"
-fix_permissions "$WORK_DIR"
+fix_permissions "$IMAGE_TAR"
 
 echo "Running scanner container..." | tee -a "$SCAN_LOG"
 
@@ -160,27 +196,9 @@ docker run --rm \
 fix_permissions "$RESULT_DIR"
 fix_permissions "$CACHE_BASE/grype"
 
-echo "Cleaning tar files older than 24 hours" | tee -a "$SCAN_LOG"
-find "$WORK_BASE" -name "image.tar" -type f -mmin +"$TAR_RETENTION_MINUTES" -delete
-find "$WORK_BASE" -mindepth 1 -type d -empty -delete
-
-fix_permissions "$BASE_DIR"
-
-echo "Scan completed successfully"
-echo "Results: $RESULT_DIR"
-
-
-
-# Reporter section
-
-ANALYSIS_DIR="$RESULT_DIR/analysis"
-
-echo "Preparing analysis output directory..." | tee -a "$SCAN_LOG"
-mkdir -p "$ANALYSIS_DIR"
-chown -R "$HOST_UID:$HOST_GID" "$ANALYSIS_DIR"
-chmod -R u+rwX,g+rwX "$ANALYSIS_DIR"
-
 echo "Running reporter/analyzer container..." | tee -a "$SCAN_LOG"
+mkdir -p "$ANALYSIS_DIR"
+fix_permissions "$ANALYSIS_DIR"
 
 docker run --rm \
   --user "$HOST_UID:$HOST_GID" \
@@ -189,5 +207,12 @@ docker run --rm \
   "$REPORTER_IMAGE" \
   python -m analyzer.main /input /output
 
-chown -R "$HOST_UID:$HOST_GID" "$ANALYSIS_DIR"
-chmod -R u+rwX,g+rwX "$ANALYSIS_DIR"
+fix_permissions "$RESULT_DIR"
+
+echo "Cleaning tar files older than 24 hours" | tee -a "$SCAN_LOG"
+find "$WORK_BASE" -name "image.tar" -type f -mmin +"$TAR_RETENTION_MINUTES" -delete
+find "$WORK_BASE" -mindepth 1 -type d -empty -delete
+fix_permissions "$BASE_DIR"
+
+echo "Scan completed successfully"
+echo "Results: $RESULT_DIR"

@@ -92,8 +92,7 @@ def build_summary(metadata, records, sbom, warnings, generated_at, raw_match_cou
 
     priority_findings = sorted(
         priority_findings,
-        key=lambda r: SEVERITY_ORDER.index(normalized_severity(r.get("severity")))
-        if normalized_severity(r.get("severity")) in SEVERITY_ORDER else 99
+        key=lambda r: severity_rank(r.get("severity"))
     )
 
     cve_groups = build_cve_groups(records)
@@ -104,16 +103,15 @@ def build_summary(metadata, records, sbom, warnings, generated_at, raw_match_cou
 
     return {
         "generated_at": generated_at,
-        "image": {
-            "image_ref": metadata.get("image_ref", ""),
-            "image_source": metadata.get("image_source", ""),
-            "repo_digest": metadata.get("repo_digest", ""),
-            "digest_value": metadata.get("digest_value", ""),
-            "short_digest": metadata.get("short_digest", ""),
-            "image_os": metadata.get("image_os", ""),
-            "image_architecture": metadata.get("image_architecture", ""),
-            "scan_timestamp_utc": metadata.get("scan_timestamp_utc", ""),
+        "schema_version": metadata.get("schema_version", "1.0"),
+        "artifact": {
+            "artifact_id": metadata.get("artifact_id", ""),
+            "artifact_type": metadata.get("artifact_type", ""),
+            "artifact_role": metadata.get("artifact_role", ""),
         },
+        "project": metadata.get("project", {}),
+        "image": metadata.get("image", {}),
+        "scan": metadata.get("scan", {}),
         "summary": {
             "raw_match_count": raw_match_count,
             "unique_finding_count": len(records),
@@ -126,8 +124,8 @@ def build_summary(metadata, records, sbom, warnings, generated_at, raw_match_cou
         },
         "top_affected_packages": top_items(package_counter),
         "remediation_area_counts": dict(remediation_counter),
-        "priority_findings": priority_findings[:25],
+        "priority_findings": priority_findings,
         "cve_groups": cve_groups,
-        "priority_cve_groups": priority_cve_groups,        
+        "priority_cve_groups": priority_cve_groups,
         "warnings": warnings,
     }

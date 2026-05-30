@@ -1,18 +1,44 @@
 def write_markdown_report(summary, path):
-    image = summary["image"]
-    stats = summary["summary"]
+    artifact = summary.get("artifact", {})
+    project = summary.get("project", {})
+    image = summary.get("image", {})
+    scan = summary.get("scan", {})
+    stats = summary.get("summary", {})
 
     lines = []
 
     lines.append("**Container Image Security Analysis Report**")
     lines.append("")
+
+    lines.append("**Artifact Details**")
+    lines.append("")
+    lines.append(f"- Artifact ID: `{artifact.get('artifact_id', '')}`")
+    lines.append(f"- Artifact type: `{artifact.get('artifact_type', '')}`")
+    if artifact.get("artifact_role"):
+        lines.append(f"- Artifact role: `{artifact.get('artifact_role', '')}`")
+    lines.append("")
+
+    if any(project.get(key) for key in project):
+        lines.append("**Project Details**")
+        lines.append("")
+        lines.append(f"- Project ID: `{project.get('project_id', '')}`")
+        lines.append(f"- Project name: `{project.get('project_name', '')}`")
+        lines.append(f"- Project type: `{project.get('project_type', '')}`")
+        lines.append(f"- Repository: `{project.get('project_repository', '')}`")
+        lines.append(f"- Branch: `{project.get('project_branch', '')}`")
+        lines.append(f"- Commit: `{project.get('project_commit', '')}`")
+        lines.append("")
+
     lines.append("**Image Details**")
     lines.append("")
     lines.append(f"- Image: `{image.get('image_ref', '')}`")
+    lines.append(f"- Image name: `{image.get('image_name', '')}`")
+    lines.append(f"- Image tag: `{image.get('image_tag', '')}`")
     lines.append(f"- Source: `{image.get('image_source', '')}`")
     lines.append(f"- Digest: `{image.get('digest_value', '')}`")
     lines.append(f"- OS/Architecture: `{image.get('image_os', '')}/{image.get('image_architecture', '')}`")
-    lines.append(f"- Original scan time: `{image.get('scan_timestamp_utc', '')}`")
+    lines.append(f"- Image created: `{image.get('image_created', '')}`")
+    lines.append(f"- Original scan time: `{scan.get('scan_timestamp_utc', '')}`")
     lines.append(f"- Analysis generated at: `{summary.get('generated_at', '')}`")
     lines.append("")
 
@@ -68,7 +94,6 @@ def write_markdown_report(summary, path):
             lines.append(f"  - Fix available: **{group.get('fix_available', False)}**")
             lines.append(f"  - Recommended action: {action_display}")
             lines.append("")
-
 
     if summary.get("warnings"):
         lines.append("**Warnings**")
