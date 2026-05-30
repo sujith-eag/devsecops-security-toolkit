@@ -28,12 +28,17 @@ def error_entry(image_folder, stage, error_type, message, **extra):
 def main():
     parser = argparse.ArgumentParser(description="Refresh SBOM vulnerability scans and write global monitoring core data files.")
     parser.add_argument("results_dir", help="Path to runtime results directory, e.g. /results")
+    parser.add_argument(
+        "--monitoring-dir",
+        default=None,
+        help="Path to global monitoring output directory, e.g. /monitoring",
+    )
     args = parser.parse_args()
 
     started_at = utc_now()
     run_id = str(uuid.uuid4())
     results_dir = Path(args.results_dir).resolve()
-    monitoring_dir = results_dir / "monitoring"
+    monitoring_dir = Path(args.monitoring_dir).resolve() if args.monitoring_dir else results_dir / "monitoring"
     current_dir = monitoring_dir / "current"
     scan_errors = []
     all_findings = []

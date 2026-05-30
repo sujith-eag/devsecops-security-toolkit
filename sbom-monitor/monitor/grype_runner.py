@@ -72,7 +72,21 @@ def scan_sbom(sbom_path: Path, json_output_path: Path, table_output_path: Path):
             "stderr": json_result["stderr"],
         }
 
-    json_output_path.write_text(json_result["stdout"], encoding="utf-8")
+    try:
+        parsed_json = json.loads(json_result["stdout"])
+        json_output_path.write_text(
+            json.dumps(parsed_json, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+    except Exception as exc:
+        return {
+            "ok": False,
+            "stage": "grype_json_format",
+            "returncode": 1,
+            "stdout": json_result["stdout"],
+            "stderr": f"Failed to format Grype JSON output: {exc}",
+        }
+
 
     table_result = run_command(["grype", target, "-o", "table"], timeout=1800)
     if table_result["returncode"] == 0:
