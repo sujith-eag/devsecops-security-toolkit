@@ -44,6 +44,112 @@ def _format_changes(changes):
     )
 
 
+def _image_label(image):
+    return (
+        image.get("image_reference")
+        or image.get("image_name")
+        or image.get("image_digest")
+        or image.get("image_folder")
+        or ""
+    )
+
+
+def _images_text(images):
+    return ", ".join(_image_label(image) for image in images or [])
+
+
+def _has_fix_versions(item):
+    return bool(item.get("fixed_versions"))
+
+
+def _build_fixable_cve_rows(cves):
+    rows = []
+
+    for cve in cves:
+        for package in cve.get("affected_packages", []):
+            if not _has_fix_versions(package):
+                continue
+
+            rows.append([
+                cve.get("vulnerability_id"),
+                package.get("severity") or cve.get("severity"),
+                package.get("package_name"),
+                package.get("package_version"),
+                package.get("package_type"),
+                package.get("fixed_versions", []),
+                package.get("affected_image_count", 0),
+                _images_text(package.get("affected_images", [])),
+            ])
+
+    return rows
+
+
+def _build_non_fixable_cve_rows(cves):
+    rows = []
+
+    for cve in cves:
+        for package in cve.get("affected_packages", []):
+            if _has_fix_versions(package):
+                continue
+
+            rows.append([
+                cve.get("vulnerability_id"),
+                package.get("severity") or cve.get("severity"),
+                package.get("package_name"),
+                package.get("package_version"),
+                package.get("package_type"),
+                package.get("fix_state"),
+                package.get("affected_image_count", 0),
+                _images_text(package.get("affected_images", [])),
+            ])
+
+    return rows
+
+
+def _build_fixable_package_rows(packages):
+    rows = []
+
+    for package in packages:
+        for vulnerability in package.get("vulnerabilities", []):
+            if not _has_fix_versions(vulnerability):
+                continue
+
+            rows.append([
+                package.get("package_name"),
+                package.get("package_version"),
+                package.get("package_type"),
+                vulnerability.get("vulnerability_id"),
+                vulnerability.get("severity") or package.get("severity"),
+                vulnerability.get("fixed_versions", []),
+                vulnerability.get("affected_image_count", 0),
+                _images_text(vulnerability.get("affected_images", [])),
+            ])
+
+    return rows
+
+
+def _build_non_fixable_package_rows(packages):
+    rows = []
+
+    for package in packages:
+        for vulnerability in package.get("vulnerabilities", []):
+            if _has_fix_versions(vulnerability):
+                continue
+
+            rows.append([
+                package.get("package_name"),
+                package.get("package_version"),
+                package.get("package_type"),
+                vulnerability.get("vulnerability_id"),
+                vulnerability.get("severity") or package.get("severity"),
+                vulnerability.get("fix_state"),
+                vulnerability.get("affected_image_count", 0),
+                _images_text(vulnerability.get("affected_images", [])),
+            ])
+
+    return rows
+
+
 def build_monitoring_report(overview):
     run = overview.get("run_summary", {})
     counts = overview.get("overall_counts", {})
@@ -70,33 +176,11 @@ def build_monitoring_report(overview):
         for item in images
     ]
 
-    cve_rows = [
-        [
-            item.get("vulnerability_id"),
-            item.get("severity"),
-            item.get("finding_count"),
-            item.get("affected_image_count"),
-            item.get("affected_package_count"),
-            item.get("fix_available"),
-            item.get("fixed_versions", []),
-        ]
-        for item in cves
-    ]
+    fixable_cve_rows = _build_fixable_cve_rows(cves)
+    non_fixable_cve_rows = _build_non_fixable_cve_rows(cves)
 
-    package_rows = [
-        [
-            item.get("package_name"),
-            item.get("package_version"),
-            item.get("package_type"),
-            item.get("severity"),
-            item.get("finding_count"),
-            item.get("vulnerability_count"),
-            item.get("affected_image_count"),
-            item.get("fix_available"),
-            item.get("fixed_versions", []),
-        ]
-        for item in packages
-    ]
+    fixable_package_rows = _build_fixable_package_rows(packages)
+    non_fixable_package_rows = _build_non_fixable_package_rows(packages)
 
     new_rows = [
         [
@@ -186,18 +270,32 @@ def build_monitoring_report(overview):
     image_rows,
 )}
 
-## CVE Overview
+## Fixable CVEs
 
 {_table(
-    ["CVE", "Severity", "Findings", "Images", "Packages", "Fix Available", "Fixed Versions"],
-    cve_rows,
+    ["CVE", "Severity", "Package", "Installed Version", "Package Type", "Fixed Versions", "Affected Images", "Images"],
+    fixable_cve_rows,
 )}
 
-## Package Overview
+## Non-Fixable / Unknown-Fix CVEs
 
 {_table(
-    ["Package", "Version", "Type", "Severity", "Findings", "CVEs", "Images", "Fix Available", "Fixed Versions"],
-    package_rows,
+    ["CVE", "Severity", "Package", "Installed Version", "Package Type", "Fix State", "Affected Images", "Images"],
+    non_fixable_cve_rows,
+)}
+
+## Fixable Packages
+
+{_table(
+    ["Package", "Installed Version", "Package Type", "CVE", "Severity", "Fixed Versions", "Affected Images", "Images"],
+    fixable_package_rows,
+)}
+
+## Non-Fixable / Unknown-Fix Packages
+
+{_table(
+    ["Package", "Installed Version", "Package Type", "CVE", "Severity", "Fix State", "Affected Images", "Images"],
+    non_fixable_package_rows,
 )}
 
 ## New Findings
