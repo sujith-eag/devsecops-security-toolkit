@@ -59,43 +59,59 @@ def update_grype_db():
     }
 
 
+def pretty_json_file(path: Path):
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
+
+    result = run_command(
+        ["jq", ".", str(path)],
+        timeout=120,
+    )
+
+    if result["returncode"] != 0:
+        return result["stderr"] or "jq failed to format JSON"
+
+    tmp_path.write_text(result["stdout"], encoding="utf-8")
+    tmp_path.replace(path)
+
+    return None
+
+
 def scan_sbom(sbom_path: Path, json_output_path: Path, table_output_path: Path):
     target = f"sbom:{sbom_path}"
 
-    json_result = run_command(["grype", target, "-o", "json"], timeout=1800)
-    if json_result["returncode"] != 0:
+    result = run_command(
+        [
+            "grype",
+            target,
+            "-o",
+            f"json={json_output_path}",
+            "-o",
+            f"table={table_output_path}",
+        ],
+        timeout=1800,
+    )
+
+    if result["returncode"] != 0:
         return {
             "ok": False,
-            "stage": "grype_json_scan",
-            "returncode": json_result["returncode"],
-            "stdout": json_result["stdout"],
-            "stderr": json_result["stderr"],
+            "stage": "grype_sbom_scan",
+            "returncode": result["returncode"],
+            "stdout": result["stdout"],
+            "stderr": result["stderr"],
         }
 
-    try:
-        parsed_json = json.loads(json_result["stdout"])
-        json_output_path.write_text(
-            json.dumps(parsed_json, indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
-        )
-    except Exception as exc:
+    format_error = pretty_json_file(json_output_path)
+    if format_error:
         return {
             "ok": False,
             "stage": "grype_json_format",
             "returncode": 1,
-            "stdout": json_result["stdout"],
-            "stderr": f"Failed to format Grype JSON output: {exc}",
+            "stdout": result["stdout"],
+            "stderr": f"Failed to format Grype JSON output: {format_error}",
         }
-
-
-    table_result = run_command(["grype", target, "-o", "table"], timeout=1800)
-    if table_result["returncode"] == 0:
-        table_output_path.write_text(table_result["stdout"], encoding="utf-8")
-    else:
-        table_output_path.write_text(table_result["stdout"] + "\n" + table_result["stderr"], encoding="utf-8")
 
     return {
         "ok": True,
-        "table_returncode": table_result["returncode"],
-        "table_stderr": table_result["stderr"].strip(),
+        "table_returncode": 0,
+        "table_stderr": "",
     }

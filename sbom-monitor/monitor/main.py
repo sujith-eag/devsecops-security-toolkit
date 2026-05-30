@@ -7,8 +7,11 @@ from monitor.archive import archive_current
 from monitor.comparator import compare_findings
 from monitor.discovery import discover_result_folders
 from monitor.grype_runner import get_grype_version, scan_sbom, update_grype_db
-from monitor.normalizer import load_json, normalize_grype_data
-from monitor.writer import write_json
+from monitor.writer import write_json, write_text
+from monitor.normalizer import load_json, normalize_grype_data, deduplicate_findings
+from monitor.indexes import build_cve_index, build_image_index, build_package_index
+from monitor.overview import build_monitoring_overview
+from monitor.reporter import build_monitoring_report
 
 
 def utc_now():
@@ -85,7 +88,10 @@ def main():
         old_findings = []
         if vuln_path.is_file():
             try:
-                old_findings = normalize_grype_data(load_json(vuln_path), metadata, image_folder)
+                old_findings = deduplicate_findings(
+                    normalize_grype_data(load_json(vuln_path), metadata, image_folder)
+                )
+
             except Exception as exc:
                 scan_errors.append(error_entry(image_folder, "json_parse", "invalid_old_grype_json", str(exc)))
 
@@ -103,7 +109,10 @@ def main():
             continue
 
         try:
-            new_findings = normalize_grype_data(load_json(vuln_path), metadata, image_folder)
+            new_findings = deduplicate_findings(
+                normalize_grype_data(load_json(vuln_path), metadata, image_folder)
+            )
+            
         except Exception as exc:
             failed_count += 1
             scan_errors.append(error_entry(image_folder, "json_parse", "invalid_new_grype_json", str(exc)))
@@ -124,12 +133,18 @@ def main():
                 returncode=scan_result.get("table_returncode"),
             ))
 
+   
+    cve_index = build_cve_index(all_findings)
+    image_index = build_image_index(all_findings)
+    package_index = build_package_index(all_findings)
+    
     finished_at = utc_now()
     monitor_run = {
         "run_id": run_id,
         "started_at": started_at,
         "finished_at": finished_at,
         "results_dir": str(results_dir),
+        "monitoring_dir": str(monitoring_dir),
         "archived_previous_run_to": archived_to,
         "grype_version": grype_version,
         "grype_db": grype_db,
@@ -141,11 +156,32 @@ def main():
         "finding_count": len(all_findings),
         "new_finding_count": len(finding_changes["new"]),
         "changed_finding_count": len(finding_changes["changed"]),
+        "cve_index_count": len(cve_index),
+        "image_index_count": len(image_index),
+        "package_index_count": len(package_index),
         "error_count": len(scan_errors),
     }
 
+    monitoring_overview = build_monitoring_overview(
+        monitor_run=monitor_run,
+        findings=all_findings,
+        finding_changes=finding_changes,
+        cve_index=cve_index,
+        image_index=image_index,
+        package_index=package_index,
+        scan_errors=scan_errors,
+    )
+    
+    monitoring_report = build_monitoring_report(monitoring_overview)
+ 
+
     write_json(current_dir / "findings.json", all_findings)
     write_json(current_dir / "finding-changes.json", finding_changes)
+    write_json(current_dir / "cve-index.json", cve_index)
+    write_json(current_dir / "image-index.json", image_index)
+    write_json(current_dir / "package-index.json", package_index)
+    write_json(current_dir / "monitoring-overview.json", monitoring_overview)
+    write_text(current_dir / "monitoring-report.md", monitoring_report)
     write_json(current_dir / "scan-errors.json", scan_errors)
     write_json(current_dir / "monitor-run.json", monitor_run)
 

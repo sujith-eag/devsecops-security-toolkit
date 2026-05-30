@@ -85,3 +85,65 @@ def normalize_grype_data(grype_data: dict, metadata: dict, image_folder: str, so
         })
 
     return findings
+
+
+SEVERITY_RANK = {
+    "Unknown": 0,
+    "Negligible": 1,
+    "Low": 2,
+    "Medium": 3,
+    "High": 4,
+    "Critical": 5,
+}
+
+
+def _as_list(value):
+    if value is None or value == "":
+        return []
+    if isinstance(value, list):
+        return value
+    return [value]
+
+
+def _merge_unique(existing, new_values):
+    merged = list(existing or [])
+    for value in _as_list(new_values):
+        if value not in (None, "") and value not in merged:
+            merged.append(value)
+    return merged
+
+
+def _higher_severity(current, new):
+    current_rank = SEVERITY_RANK.get(current or "Unknown", 0)
+    new_rank = SEVERITY_RANK.get(new or "Unknown", 0)
+    return new if new_rank > current_rank else current
+
+
+def deduplicate_findings(findings):
+    deduped = {}
+
+    for finding in findings:
+        key = finding.get("finding_key", "")
+
+        if key not in deduped:
+            item = dict(finding)
+            item["duplicate_count"] = 1
+            item["grype_match_types"] = _as_list(finding.get("grype_match_type"))
+            item["fixed_versions"] = _merge_unique([], finding.get("fixed_versions"))
+            deduped[key] = item
+            continue
+
+        item = deduped[key]
+        item["duplicate_count"] = item.get("duplicate_count", 1) + 1
+        item["fixed_versions"] = _merge_unique(item.get("fixed_versions"), finding.get("fixed_versions"))
+        item["grype_match_types"] = _merge_unique(item.get("grype_match_types"), finding.get("grype_match_type"))
+
+        item["severity"] = _higher_severity(item.get("severity"), finding.get("severity"))
+
+        if item.get("fix_state") != "fixed" and finding.get("fix_state") == "fixed":
+            item["fix_state"] = "fixed"
+
+        if not item.get("grype_match_type") and finding.get("grype_match_type"):
+            item["grype_match_type"] = finding.get("grype_match_type")
+
+    return sorted(deduped.values(), key=lambda item: item.get("finding_key", ""))
