@@ -3,15 +3,19 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from monitor.archive import archive_current
-from monitor.comparator import compare_findings
-from monitor.discovery import discover_result_folders
-from monitor.grype_runner import get_grype_version, scan_sbom, update_grype_db
-from monitor.writer import write_json, write_text
-from monitor.normalizer import load_json, normalize_grype_data, deduplicate_findings
-from monitor.indexes import build_cve_index, build_image_index, build_package_index
-from monitor.overview import build_monitoring_overview
-from monitor.reporter import build_monitoring_report
+from monitor.runtime.archiver import archive_current
+from monitor.runtime.discovery import discover_result_folders
+from monitor.runtime.io import write_json, write_text
+
+from monitor.scanner.grype import get_grype_version, scan_sbom, update_grype_db
+
+from monitor.findings.normalizer import load_json, normalize_grype_data, deduplicate_findings
+from monitor.findings.comparator import compare_findings
+
+from monitor.indexes.builder import build_cve_index, build_image_index, build_package_index
+
+from monitor.reports.overview import build_monitoring_overview
+from monitor.reports.markdown import build_monitoring_report
 
 
 def utc_now():
@@ -175,15 +179,18 @@ def main():
     monitoring_report = build_monitoring_report(monitoring_overview)
  
 
-    write_json(current_dir / "findings.json", all_findings)
-    write_json(current_dir / "finding-changes.json", finding_changes)
-    write_json(current_dir / "cve-index.json", cve_index)
-    write_json(current_dir / "image-index.json", image_index)
-    write_json(current_dir / "package-index.json", package_index)
-    write_json(current_dir / "monitoring-overview.json", monitoring_overview)
-    write_text(current_dir / "monitoring-report.md", monitoring_report)
-    write_json(current_dir / "scan-errors.json", scan_errors)
-    write_json(current_dir / "monitor-run.json", monitor_run)
+    write_json(current_dir / "findings" / "current-findings.json", all_findings)
+    write_json(current_dir / "findings" / "finding-changes.json", finding_changes)
+
+    write_json(current_dir / "indexes" / "by-cve.json", cve_index)
+    write_json(current_dir / "indexes" / "by-image.json", image_index)
+    write_json(current_dir / "indexes" / "by-package.json", package_index)
+
+    write_json(current_dir / "reports" / "overview.json", monitoring_overview)
+    write_text(current_dir / "reports" / "report.md", monitoring_report)
+
+    write_json(current_dir / "run" / "run-errors.json", scan_errors)
+    write_json(current_dir / "run" / "run-metadata.json", monitor_run)
 
     print(
         f"SBOM monitor completed: scanned={scanned_count}, skipped={len(skipped)}, "

@@ -18,7 +18,8 @@ def archive_current(monitoring_dir: Path):
         return None
 
     previous_timestamp = None
-    run_file = current_dir / "monitor-run.json"
+    run_file = current_dir / "run" / "run-metadata.json"
+
     if run_file.is_file():
         try:
             data = json.loads(run_file.read_text(encoding="utf-8"))
