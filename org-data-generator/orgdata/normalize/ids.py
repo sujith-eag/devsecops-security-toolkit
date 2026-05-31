@@ -31,9 +31,7 @@ def package_type_from_purl(purl):
 
 
 def normalize_purl(purl):
-    if not purl or not isinstance(purl, str):
-        return ""
-    if not purl.startswith("pkg:"):
+    if not purl or not isinstance(purl, str) or not purl.startswith("pkg:"):
         return ""
     parts = urlsplit(purl)
     return urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))

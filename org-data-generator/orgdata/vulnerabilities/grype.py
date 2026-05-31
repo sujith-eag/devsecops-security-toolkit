@@ -5,20 +5,8 @@ from pathlib import Path
 
 
 def run_command(args, timeout=None):
-    completed = subprocess.run(
-        args,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        timeout=timeout,
-        env=os.environ.copy(),
-    )
-    return {
-        "returncode": completed.returncode,
-        "stdout": completed.stdout,
-        "stderr": completed.stderr,
-        "command": args,
-    }
+    completed = subprocess.run(args, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout, env=os.environ.copy())
+    return {"returncode": completed.returncode, "stdout": completed.stdout, "stderr": completed.stderr, "command": args}
 
 
 def get_grype_version():
@@ -28,7 +16,7 @@ def get_grype_version():
             return json.loads(result["stdout"])
         except Exception:
             return {"raw": result["stdout"].strip()}
-    return {"error": result["stderr"].strip(), "raw": result["stdout"].strip(), "returncode": result["returncode"]}
+    return {"returncode": result["returncode"], "stderr": result["stderr"].strip(), "stdout": result["stdout"].strip()}
 
 
 def update_grype_db():
@@ -42,10 +30,7 @@ def update_grype_db():
             parsed_status = {"raw": status["stdout"].strip()}
     else:
         parsed_status = {"returncode": status["returncode"], "stderr": status["stderr"].strip()}
-    return {
-        "update": {"returncode": update["returncode"], "stderr": update["stderr"].strip(), "stdout": update["stdout"].strip()},
-        "status": parsed_status,
-    }
+    return {"update": {"returncode": update["returncode"], "stdout": update["stdout"].strip(), "stderr": update["stderr"].strip()}, "status": parsed_status}
 
 
 def pretty_json_file(path: Path):
@@ -65,5 +50,5 @@ def scan_sbom(sbom_path: Path, json_output_path: Path, table_output_path: Path):
         return {"ok": False, "stage": "grype_sbom_scan", "returncode": result["returncode"], "stdout": result["stdout"], "stderr": result["stderr"]}
     format_error = pretty_json_file(json_output_path)
     if format_error:
-        return {"ok": False, "stage": "grype_json_format", "returncode": 1, "stdout": result["stdout"], "stderr": format_error}
+        return {"ok": False, "stage": "grype_json_format", "returncode": 1, "stderr": format_error}
     return {"ok": True}

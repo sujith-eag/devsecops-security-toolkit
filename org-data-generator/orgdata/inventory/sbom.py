@@ -24,15 +24,15 @@ FOUND_BY_MAP = {
 }
 
 
-def _as_list(value):
+def as_list(value):
     if value is None or value == "":
         return []
     return value if isinstance(value, list) else [value]
 
 
-def _merge_unique(existing, values):
+def merge_unique(existing, values):
     merged = list(existing or [])
-    for value in _as_list(values):
+    for value in as_list(values):
         if value not in (None, "") and value not in merged:
             merged.append(value)
     return merged
@@ -52,10 +52,7 @@ def component_licenses(component):
         if not isinstance(item, dict):
             continue
         lic = item.get("license") or {}
-        if isinstance(lic, dict):
-            value = lic.get("id") or lic.get("name")
-        else:
-            value = lic
+        value = lic.get("id") or lic.get("name") if isinstance(lic, dict) else lic
         if value and value not in result:
             result.append(value)
     return result
@@ -104,7 +101,7 @@ def normalize_component(component, artifact_id):
         "package_group": str(component.get("group") or ""),
         "component_type": component_type,
         "normalized_purl": package_id if str(package_id).startswith("pkg:") else "",
-        "purls": _as_list(purl),
+        "purls": as_list(purl),
         "licenses": component_licenses(component),
         "publisher": str(component.get("publisher") or ""),
     }
@@ -112,8 +109,8 @@ def normalize_component(component, artifact_id):
     relationship = {
         "artifact_id": artifact_id,
         "package_id": package_id,
-        "bom_refs": _as_list(bom_ref),
-        "purls": _as_list(purl),
+        "bom_refs": as_list(bom_ref),
+        "purls": as_list(purl),
         "relationship_type": "contains",
         "duplicate_count": 1,
     }
@@ -122,17 +119,16 @@ def normalize_component(component, artifact_id):
 
 
 def merge_package(existing, new):
-    existing["purls"] = _merge_unique(existing.get("purls"), new.get("purls"))
-    existing["licenses"] = _merge_unique(existing.get("licenses"), new.get("licenses"))
-    if not existing.get("publisher") and new.get("publisher"):
-        existing["publisher"] = new.get("publisher")
-    if not existing.get("package_group") and new.get("package_group"):
-        existing["package_group"] = new.get("package_group")
+    for field in ("package_name", "package_version", "package_type", "package_group", "component_type", "normalized_purl", "publisher"):
+        if existing.get(field) in (None, "", []):
+            existing[field] = new.get(field)
+    existing["purls"] = merge_unique(existing.get("purls"), new.get("purls"))
+    existing["licenses"] = merge_unique(existing.get("licenses"), new.get("licenses"))
     return existing
 
 
 def merge_artifact_package(existing, new):
-    existing["bom_refs"] = _merge_unique(existing.get("bom_refs"), new.get("bom_refs"))
-    existing["purls"] = _merge_unique(existing.get("purls"), new.get("purls"))
-    existing["duplicate_count"] = existing.get("duplicate_count", 1) + 1
+    existing["bom_refs"] = merge_unique(existing.get("bom_refs"), new.get("bom_refs"))
+    existing["purls"] = merge_unique(existing.get("purls"), new.get("purls"))
+    existing["duplicate_count"] = existing.get("duplicate_count", 1) + new.get("duplicate_count", 1)
     return existing
