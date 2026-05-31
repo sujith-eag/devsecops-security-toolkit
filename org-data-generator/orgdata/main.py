@@ -1,3 +1,15 @@
+"""
+Main orchestration entrypoint for org-data generation.
+
+This module discovers scan result folders, parses metadata and SBOM files,
+optionally refreshes Grype SBOM vulnerability output, writes partitioned
+normalized entity and relationship data, builds query indexes, and writes run
+metadata/errors.
+
+It should remain orchestration-focused. Parsing, normalization, partitioning,
+validation, and index creation should live in their dedicated modules.
+"""
+
 import argparse
 import uuid
 from datetime import datetime, timezone
@@ -17,6 +29,7 @@ from orgdata.vulnerabilities.builder import (
     vulnerability_bucket,
 )
 from orgdata.vulnerabilities.grype import get_grype_version, scan_sbom, update_grype_db
+from orgdata.indexes.builder import build_all_indexes
 
 
 def utc_now():
@@ -179,6 +192,11 @@ def main():
     write_json(current_dir / "run" / "run-errors.json", run_errors)
     write_json(current_dir / "run" / "reference-warnings.json", reference_warnings)
 
+    # Creatng the Indexes from 
+    log("Building query indexes")
+    index_metadata = build_all_indexes(current_dir)
+    log("Finished building query indexes")
+
     run_metadata = {
         "run_id": run_id,
         "started_at": started_at,
@@ -204,6 +222,7 @@ def main():
         "changed_finding_count": len(finding_changes["changed"]),
         "error_count": len(run_errors),
         "reference_warning_count": len(reference_warnings),
+        "index_metadata": index_metadata,
     }
     write_json(current_dir / "run" / "run-metadata.json", run_metadata)
     log("Finished writing normalized org data files")

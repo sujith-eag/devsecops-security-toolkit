@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Launcher for org-data generation.
+#
+# Resolves the real host user even when run with sudo, prepares runtime folders,
+# fixes ownership/permissions, mounts results/org-data/Grype cache directories,
+# and runs the org-data generator container as the host UID/GID.
+
 HOST_USER="${SUDO_USER:-$(id -un)}"
 HOST_UID="$(id -u "$HOST_USER")"
 HOST_GID="$(id -g "$HOST_USER")"

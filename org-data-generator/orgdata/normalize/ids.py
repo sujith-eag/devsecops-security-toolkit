@@ -1,3 +1,11 @@
+"""
+Shared identity and package normalization helpers.
+
+Defines normalized package type handling, normalized PURL generation, fallback
+package IDs, and finding IDs. This module is important because inventory data
+and vulnerability data must produce matching package IDs.
+"""
+
 from urllib.parse import urlsplit, urlunsplit
 
 PACKAGE_TYPE_MAP = {

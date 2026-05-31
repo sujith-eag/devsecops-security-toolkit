@@ -1,3 +1,12 @@
+"""
+Parses CycloneDX SBOM components into normalized package entities and
+artifact-package relationships.
+
+This module excludes noisy `file` and `operating-system` components by default.
+Package ecosystem/type is derived from PURL or Syft properties, not directly
+from CycloneDX `component.type` when it is only `library`.
+"""
+
 from orgdata.normalize.ids import normalize_package_type, package_id_from_values, package_type_from_purl
 
 LANGUAGE_MAP = {

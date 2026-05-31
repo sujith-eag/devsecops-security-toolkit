@@ -1,3 +1,11 @@
+"""
+Parses scanner metadata into normalized artifact and project records.
+
+The result folder name is used as fallback `artifact_id`. Project metadata is
+optional; artifacts without project metadata are still included as artifact-only
+records.
+"""
+
 def parse_metadata(metadata, folder_name):
     artifact_id = metadata.get("artifact_id") or folder_name
     artifact_type = metadata.get("artifact_type") or (metadata.get("scan") or {}).get("scan_type") or "unknown"

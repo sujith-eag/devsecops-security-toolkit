@@ -1,3 +1,11 @@
+"""
+Reference validation helpers.
+
+Checks whether vulnerability findings reference packages that are present in the
+artifact-package relationship data for the same artifact. Mismatches are written
+as warnings instead of dropping findings.
+"""
+
 def validate_artifact_references(artifact_id, artifact_package_ids, findings):
     warnings = []
     for finding in findings:

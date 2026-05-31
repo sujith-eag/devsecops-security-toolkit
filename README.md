@@ -1,17 +1,4 @@
-
-```
-$ sudo docker build -t reporter-analyzer:latest ./reporter-analyzer
-$ sudo docker build -t image-sbom-vuln-scanner:latest ./image-sbom-vuln-scanner
-
-$ sudo ./launcher/scan.sh image nginx:latest
-$ sudo ./launcher/scan.sh source /home/sujith/Desktop/websites/eagle_campus/backend
-
-$ sudo ./launcher/scan.sh image ubuntu:22.04
-
-$ sudo ./launcher/scan.sh image image-sbom-vuln-scanner:latest
-```
-
-# devsecops-security-toolkit
+# devsecops-security-toolkit (OUDATED DOC)
 
 Modular toolkit for container image SBOM generation, vulnerability scanning, and basic analysis reporting.
 

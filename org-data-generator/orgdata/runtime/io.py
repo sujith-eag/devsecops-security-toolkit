@@ -1,3 +1,11 @@
+"""
+Shared JSON and filesystem helpers.
+
+Provides UTF-8 JSON read/write helpers and directory reset behavior for the
+current org-data output directory. JSON output uses `ensure_ascii=False` so
+Unicode characters remain readable.
+"""
+
 import json
 import shutil
 from pathlib import Path

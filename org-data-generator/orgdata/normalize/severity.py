@@ -1,3 +1,10 @@
+"""
+Shared severity normalization helpers.
+
+Provides normalized severity values, severity ranking, highest-severity logic,
+and empty severity count templates used by findings and indexes.
+"""
+
 SEVERITIES = ["Critical", "High", "Medium", "Low", "Negligible", "Unknown"]
 
 SEVERITY_RANK = {

@@ -1,3 +1,12 @@
+"""
+Builds vulnerability entities and finding relationships from Grype SBOM output.
+
+A vulnerability entity stores CVE/advisory metadata once. A finding links one
+vulnerability to one package in one artifact. Findings are deduplicated by
+`artifact_id + vulnerability_id + package_id` and later grouped by artifact,
+fixability, and severity.
+"""
+
 from orgdata.normalize.ids import finding_id, normalize_package_type, package_id_from_values
 from orgdata.normalize.severity import SEVERITIES, empty_severity_counts, highest_severity, normalize_severity
 from orgdata.vulnerabilities.parser import grype_matches

@@ -1,3 +1,11 @@
+"""
+Helpers for partitioned JSON/JSONL output.
+
+Large entity sets are first written as JSONL partition files and later finalized
+into deduplicated JSON files. This avoids holding all package or vulnerability
+records in memory at once and keeps output files smaller and easier to inspect.
+"""
+
 import json
 import re
 from pathlib import Path

@@ -1,3 +1,11 @@
+"""
+Builds inventory records for one artifact.
+
+Given one result folder's metadata and SBOM data, this module creates the
+artifact record, optional project record, optional project-artifact relationship,
+package records, artifact-package relationships, and any inventory warnings.
+"""
+
 from orgdata.inventory.metadata import parse_metadata
 from orgdata.inventory.sbom import merge_artifact_package, normalize_component, parse_components
 

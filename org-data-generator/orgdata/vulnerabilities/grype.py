@@ -1,3 +1,10 @@
+"""
+Grype integration utilities.
+
+Handles Grype version lookup, database update/status check, SBOM vulnerability
+scan execution, and JSON formatting using `jq` to match the scanner output style.
+"""
+
 import json
 import os
 import subprocess

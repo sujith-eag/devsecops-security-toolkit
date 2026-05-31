@@ -1,3 +1,11 @@
+"""
+Discovers valid scan result folders under the runtime results directory.
+
+A valid folder must contain at least `metadata.json` and `sbom-cyclonedx.json`.
+Invalid or incomplete folders are not fatal; they are returned as structured
+errors so the main process can continue with other artifacts.
+"""
+
 from pathlib import Path
 
 REQUIRED_FILES = ("metadata.json", "sbom-cyclonedx.json")
