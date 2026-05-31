@@ -3,64 +3,112 @@
 from flask import Blueprint, Response, current_app, redirect, render_template, request, url_for
 
 bp = Blueprint("web", __name__)
+DEFAULT_PER_PAGE = 250
 
 def queries(): return current_app.config["QUERY_SERVICE"]
 def reports(): return current_app.config["REPORT_SERVICE"]
 def store(): return current_app.config["DATA_STORE"]
 
+def paginated(items):
+    page = request.args.get("page", 1, type=int)
+    page_data = queries().paginate(items, page, DEFAULT_PER_PAGE)
+    base_args = request.args.to_dict(flat=True)
+    page_data["prev_args"] = dict(base_args, page=page_data["prev_page"])
+    page_data["next_args"] = dict(base_args, page=page_data["next_page"])
+    return page_data
+
 @bp.route("/")
-def overview():
-    return render_template("overview.html", overview=queries().overview(), title="Overview")
+def overview(): return render_template("overview.html", overview=queries().overview(), title="Overview")
 
 @bp.route("/remediation")
 def remediation():
     severity = request.args.get("severity", "")
-    return render_template("remediation.html", items=queries().remediation_items(severity or None), severity=severity, title="Remediation")
+    search = request.args.get("q", "")
+    all_items = queries().remediation_items(severity or None, search or None)
+    page_data = paginated(all_items)
+    return render_template(
+        "remediation.html",
+        items=page_data,
+        page=page_data,
+        severity=severity,
+        search=search,
+        title="Remediation",
+    )
 
 @bp.route("/artifacts")
 def artifacts():
-    return render_template("artifacts.html", artifacts=queries().artifacts(), title="Artifacts")
+    search = request.args.get("q", "")
+    all_items = queries().artifacts(search or None)
+    page_data = paginated(all_items)
+    return render_template(
+        "artifacts.html",
+        artifacts=page_data,
+        page=page_data,
+        search=search,
+        title="Artifacts",
+    )
 
-@bp.route("/artifact/<path:artifact_id>")
-def artifact_detail(artifact_id):
-    return render_template("artifact_detail.html", detail=queries().artifact_detail(artifact_id), title="Artifact Detail")
+@bp.route("/artifact/<route_id>")
+def artifact_detail(route_id): return render_template("artifact_detail.html", detail=queries().artifact_detail(route_id), title="Artifact Detail")
 
 @bp.route("/vulnerabilities")
 def vulnerabilities():
     severity = request.args.get("severity", "")
     fix = request.args.get("fix", "")
-    items = queries().vulnerabilities(severity or None, fix or None)
-    return render_template("vulnerabilities.html", vulnerabilities=items, summary=queries().vulnerability_summary(items), severity=severity, fix=fix, title="Vulnerabilities")
+    search = request.args.get("q", "")
+    all_items = queries().vulnerabilities(severity or None, fix or None, search or None)
+    page_data = paginated(all_items)
+    return render_template(
+        "vulnerabilities.html",
+        vulnerabilities=page_data,
+        page=page_data,
+        summary=queries().vulnerability_summary(all_items),
+        severity=severity,
+        fix=fix,
+        search=search,
+        title="Vulnerabilities",
+    )
 
-@bp.route("/vulnerability/<path:vulnerability_id>")
-def vulnerability_detail(vulnerability_id):
-    return render_template("vulnerability_detail.html", detail=queries().vulnerability_detail(vulnerability_id), title="Vulnerability Detail")
+@bp.route("/vulnerability/<route_id>")
+def vulnerability_detail(route_id): return render_template("vulnerability_detail.html", detail=queries().vulnerability_detail(route_id), title="Vulnerability Detail")
 
 @bp.route("/packages")
 def packages():
     package_type = request.args.get("type", "")
     search = request.args.get("q", "")
     status = request.args.get("status", "")
-    return render_template("packages.html", packages=queries().packages(package_type or None, search or None, status or None), package_types=queries().package_types(), package_type=package_type, search=search, status=status, title="Packages")
+    all_items = queries().packages(package_type or None, search or None, status or None)
+    page_data = paginated(all_items)
+    return render_template(
+        "packages.html",
+        packages=page_data,
+        page=page_data,
+        package_types=queries().package_types(),
+        package_type=package_type,
+        search=search,
+        status=status,
+        title="Packages",
+    )
 
-@bp.route("/package/<path:package_id>")
-def package_detail(package_id):
-    return render_template("package_detail.html", detail=queries().package_detail(package_id), title="Package Detail")
+@bp.route("/package/<route_id>")
+def package_detail(route_id): return render_template("package_detail.html", detail=queries().package_detail(route_id), title="Package Detail")
+
+@bp.route("/data-health")
+def data_health(): return render_template("data_health.html", health=queries().run_health(), title="Data Health")
 
 @bp.route("/reports")
-def report_page():
-    return render_template("reports.html", title="Reports")
+def report_page(): return render_template("reports.html", title="Reports")
 
 @bp.route("/reports/download/<report_type>")
 def download_report(report_type):
-    artifact_id = request.args.get("artifact_id")
-    filename, content = reports().generate(report_type, artifact_id)
+    target_id = request.args.get("target_id") or request.args.get("artifact_id")
+    filename, content = reports().generate(report_type, target_id)
     return Response(content, mimetype="text/markdown", headers={"Content-Disposition": f"attachment; filename={filename}"})
 
 @bp.route("/reports/write/<report_type>", methods=["POST", "GET"])
 def write_report(report_type):
-    artifact_id = request.args.get("artifact_id")
-    path = reports().write_report(report_type, artifact_id)
+    target_id = request.values.get("target_id") or request.args.get("artifact_id")
+    path = reports().write_report(report_type, target_id)
     return render_template("reports.html", title="Reports", message=f"Report written to {path}")
 
 @bp.route("/health")

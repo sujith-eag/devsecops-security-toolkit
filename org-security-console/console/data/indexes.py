@@ -1,4 +1,8 @@
-"""Low-level loaders for generated org-data indexes."""
+"""Low-level loaders for production org-data indexes.
+
+Production indexes are enveloped JSON files with a `records` field. This module
+also remains backward-compatible with older raw-list index files.
+"""
 
 import json
 from pathlib import Path
@@ -11,29 +15,52 @@ def read_json(path: Path, default=None):
         return json.load(handle)
 
 
+def records_from_payload(payload):
+    if isinstance(payload, list):
+        return payload
+    if isinstance(payload, dict):
+        records = payload.get("records", [])
+        if isinstance(records, list):
+            return records
+        if isinstance(records, dict):
+            return list(records.values())
+    return []
+
+
+def load_records(path: Path):
+    return records_from_payload(read_json(path, []))
+
+
+def load_mapping(path: Path):
+    payload = read_json(path, {}) or {}
+    if isinstance(payload, dict) and isinstance(payload.get("records"), dict):
+        return payload["records"]
+    if isinstance(payload, dict):
+        return payload
+    return {}
+
+
 def load_json_files(path: Path):
     if not path.exists():
         return []
     data = []
     for file in sorted(path.glob("*.json")):
-        value = read_json(file, [])
-        if isinstance(value, list):
-            data.extend(value)
-        elif value is not None:
-            data.append(value)
+        data.extend(load_records(file))
     return data
 
 
 def load_by_artifact(index_dir: Path):
-    path = index_dir / "by-artifact"
     result = {}
+    path = index_dir / "by-artifact"
     if not path.exists():
         return result
     for file in sorted(path.glob("*.json")):
-        item = read_json(file, {})
-        artifact_id = (item.get("artifact") or {}).get("artifact_id")
-        if artifact_id:
-            result[artifact_id] = item
+        records = load_records(file)
+        if records:
+            item = records[0]
+            artifact_id = item.get("artifact_id") or (item.get("artifact") or {}).get("artifact_id") or item.get("canonical_id")
+            if artifact_id:
+                result[artifact_id] = item
     return result
 
 
@@ -46,4 +73,15 @@ def load_by_vulnerability(index_dir: Path):
 
 
 def load_remediation(index_dir: Path):
-    return read_json(index_dir / "remediation.json", []) or []
+    return load_records(index_dir / "remediation.json")
+
+
+def load_manifests(index_dir: Path):
+    manifest_dir = index_dir / "manifests"
+    return {
+        "artifacts": load_mapping(manifest_dir / "artifacts.json"),
+        "packages": load_mapping(manifest_dir / "packages.json"),
+        "vulnerabilities": load_mapping(manifest_dir / "vulnerabilities.json"),
+        "remediation": load_mapping(manifest_dir / "remediation.json"),
+        "partitions": load_mapping(manifest_dir / "partitions.json"),
+    }

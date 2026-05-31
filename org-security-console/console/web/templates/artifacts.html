@@ -1,18 +1,8 @@
 {% extends "layout.html" %}
 {% block content %}
-<h2>Artifacts</h2>
-<table>
-<tr><th>Artifact</th><th>Type</th><th>Packages</th><th>Vulnerabilities</th><th>Fix Status</th><th>Critical/High</th></tr>
-{% for item in artifacts %}
-{% set art = item.artifact %}
-<tr>
-  <td><a href="{{ url_for('web.artifact_detail', artifact_id=art.artifact_id) }}">{{ art.artifact_id }}</a></td>
-  <td>{{ art.artifact_type }}</td>
-  <td>{{ item.package_count }}</td>
-  <td>{{ item.vulnerability_count }}</td>
-  <td>{{ item.fix_status }}</td>
-  <td>{{ item.critical_high_count }}</td>
-</tr>
-{% endfor %}
-</table>
+<section class="page-header"><h2>Artifacts</h2><p class="muted">Scanned images, source projects, and other artifacts ranked by current risk.</p></section>
+<form method="get" class="filters-form"><input name="q" placeholder="Search artifact ID, type, role" value="{{ search }}"><button>Apply</button><a class="button light" href="{{ url_for('web.artifacts') }}">Clear</a></form>
+{% include 'pagination.html' with context %}
+<table><tr><th>Artifact</th><th>Type</th><th>Status</th><th>Packages</th><th>Vulnerabilities</th><th>Fixable</th><th>Critical/High</th></tr>{% for item in artifacts['items'] %}{% set art = item.artifact %}<tr><td class="wrap-id"><a href="{{ url_for('web.artifact_detail', route_id=item.route_id) }}">{{ art.artifact_id }}</a></td><td>{{ art.artifact_type }}</td><td><span class="status-badge status-{{ item.security_status|lower|replace(' ', '-') }}">{{ item.security_status }}</span></td><td class="number-cell">{{ item.package_count }}</td><td class="number-cell">{{ item.vulnerability_ids|length }}</td><td class="number-cell">{{ item.fixable_count }}</td><td class="number-cell">{{ item.critical_high_count }}</td></tr>{% endfor %}</table>
+{% include 'pagination.html' with context %}
 {% endblock %}

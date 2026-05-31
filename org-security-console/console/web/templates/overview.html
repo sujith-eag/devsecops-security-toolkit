@@ -1,7 +1,10 @@
 {% extends "layout.html" %}
 {% block content %}
-<h2>Overview</h2>
-<p class="muted">Last updated: <b>{{ overview.last_updated }}</b></p>
+<section class="page-header">
+  <h2>Security Overview</h2>
+  <p class="muted">Last updated: <b>{{ overview.last_updated }}</b></p>
+</section>
+
 <div class="cards">
   <a class="card" href="{{ url_for('web.artifacts') }}"><b>Artifacts</b><span>{{ overview.artifact_count }}</span></a>
   <a class="card" href="{{ url_for('web.packages') }}"><b>Packages</b><span>{{ overview.package_count }}</span></a>
@@ -14,7 +17,15 @@
   <a class="card warn" href="{{ url_for('web.vulnerabilities', severity='High') }}"><b>High</b><span>{{ overview.high_count }}</span></a>
 </div>
 <h3>Severity Summary</h3>
-<table><tr><th>Severity</th><th>Findings</th></tr>{% for sev, count in overview.severity_totals.items() %}<tr><td><a href="{{ url_for('web.vulnerabilities', severity=sev) }}">{{ sev }}</a></td><td>{{ count }}</td></tr>{% endfor %}</table>
-<h3>Run Health</h3>
-<table><tr><th>Errors</th><td>{{ overview.error_count }}</td></tr><tr><th>Warnings</th><td>{{ overview.warning_count }}</td></tr></table>
+<table><tr><th>Severity</th><th>Findings</th></tr>{% for sev, count in overview.severity_totals.items() %}<tr><td><a href="{{ url_for('web.vulnerabilities', severity=sev) }}">{{ sev }}</a></td><td class="number-cell">{{ count }}</td></tr>{% endfor %}</table>
+
+{% if overview.error_count or overview.warning_count %}
+<div class="alert warning">Data health has {{ overview.error_count }} errors and {{ overview.warning_count }} warnings. <a href="{{ url_for('web.data_health') }}">Review data health</a>.</div>
+{% endif %}
+
+<div class="action-row">
+  <a class="button" href="{{ url_for('web.remediation') }}">Open remediation queue</a>
+  <a class="button" href="{{ url_for('web.vulnerabilities', severity='Critical') }}">View critical vulnerabilities</a>
+  <a class="button" href="{{ url_for('web.data_health') }}">Check data health</a>
+</div>
 {% endblock %}

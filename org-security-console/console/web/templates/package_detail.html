@@ -2,19 +2,9 @@
 {% block content %}
 {% set idx = detail.index %}{% set ent = detail.entity %}
 <h2>Package: {{ idx.package_name or ent.package_name }}</h2>
-<div class="cards compact">
-  <div class="card"><b>Type</b><span>{{ idx.package_type or ent.package_type }}</span></div>
-  <div class="card"><b>Version</b><span>{{ idx.package_version or ent.package_version }}</span></div>
-  <div class="card"><b>Security Status</b><span>{{ idx.fix_status }}</span></div>
-  <div class="card"><b>Vulnerabilities</b><span>{{ idx.vulnerability_ids|length }}</span></div>
-  <div class="card"><b>Artifacts</b><span>{{ idx.artifact_ids|length }}</span></div>
-</div>
-<table><tr><th>Package ID</th><td class="wrap-id">{{ idx.package_id or ent.package_id }}</td></tr></table>
-{% if idx.finding_count and idx.finding_count > 0 %}
-<h3>Severity Counts</h3><table><tr><th>Severity</th><th>Count</th></tr>{% for sev in ['Critical','High','Medium','Low','Negligible','Unknown'] %}<tr><td>{{ sev }}</td><td>{{ idx.severity_counts.get(sev, 0) }}</td></tr>{% endfor %}</table>
-{% else %}<p class="muted">No known vulnerabilities for this package in current org data.</p>{% endif %}
-<h3>Vulnerabilities Affecting This Package</h3>
-<table><tr><th>Severity</th><th>Vulnerability</th><th>Fix Status</th><th>Upgrade To / Fixed Versions</th><th>Artifacts</th></tr>{% for vuln in detail.vulnerabilities %}<tr><td class="sev-{{ vuln.severity|lower }}">{{ vuln.severity }}</td><td><a href="{{ url_for('web.vulnerability_detail', vulnerability_id=vuln.vulnerability_id) }}">{{ vuln.vulnerability_id }}</a></td><td>{{ vuln.fix_status }}</td><td>{% if vuln.fixed_versions %}<b>{{ vuln.fixed_versions|join(', ') }}</b>{% else %}<span class="muted">No fixed version known</span>{% endif %}</td><td>{{ vuln.artifact_ids|length }}</td></tr>{% endfor %}</table>
-<h3>Artifacts Using This Package</h3>
-<table><tr><th>Artifact</th><th>Type</th><th>Findings</th><th>Fixable</th></tr>{% for art in detail.artifacts %}<tr><td><a href="{{ url_for('web.artifact_detail', artifact_id=art.artifact.artifact_id) }}">{{ art.artifact.artifact_id }}</a></td><td>{{ art.artifact.artifact_type }}</td><td>{{ art.finding_count }}</td><td>{{ art.fixable_count }}</td></tr>{% endfor %}</table>
+<div class="cards compact"><div class="card"><b>Type</b><span>{{ idx.package_type or ent.package_type }}</span></div><div class="card"><b>Version</b><span>{{ idx.package_version or ent.package_version }}</span></div><div class="card"><b>Status</b><span>{{ idx.security_status }}</span></div><div class="card"><b>Vulnerabilities</b><span>{{ idx.vulnerability_ids|length }}</span></div><div class="card"><b>Artifacts</b><span>{{ idx.artifact_ids|length }}</span></div></div>
+<table><tr><th>Canonical ID</th><td class="wrap-id">{{ idx.canonical_id or idx.package_id }}</td></tr><tr><th>Display ID</th><td class="wrap-id">{{ idx.display_id }}</td></tr></table>
+{% if idx.finding_count and idx.finding_count > 0 %}<h3>Severity Counts</h3><table><tr><th>Severity</th><th>Count</th></tr>{% for sev in ['Critical','High','Medium','Low','Negligible','Unknown'] %}<tr><td>{{ sev }}</td><td class="number-cell">{{ idx.severity_counts.get(sev, 0) }}</td></tr>{% endfor %}</table>{% else %}<p class="muted">No known vulnerabilities for this package in current org data.</p>{% endif %}
+<h3>Vulnerabilities Affecting This Package</h3><table><tr><th>Severity</th><th>Vulnerability</th><th>Status</th><th>Fixed Versions</th><th>Artifacts</th></tr>{% for vuln in detail.vulnerabilities %}<tr><td class="sev-{{ (vuln.highest_severity or vuln.severity)|lower }}">{{ vuln.highest_severity or vuln.severity }}</td><td><a href="{{ url_for('web.vulnerability_detail', route_id=vuln.route_id) }}">{{ vuln.display_id or vuln.vulnerability_id }}</a></td><td>{{ vuln.security_status }}</td><td>{% if vuln.fixed_versions %}<b>{{ vuln.fixed_versions|join(', ') }}</b>{% else %}<span class="muted">None known</span>{% endif %}</td><td class="number-cell">{{ vuln.artifact_ids|length }}</td></tr>{% endfor %}</table>
+<h3>Artifacts Using This Package</h3><table><tr><th>Artifact</th><th>Type</th><th>Status</th><th>Findings</th><th>Fixable</th></tr>{% for art in detail.artifacts %}<tr><td><a href="{{ url_for('web.artifact_detail', route_id=art.route_id) }}">{{ art.artifact.artifact_id }}</a></td><td>{{ art.artifact.artifact_type }}</td><td>{{ art.security_status }}</td><td class="number-cell">{{ art.finding_count }}</td><td class="number-cell">{{ art.fixable_count }}</td></tr>{% endfor %}</table>
 {% endblock %}

@@ -1,24 +1,8 @@
 {% extends "layout.html" %}
 {% block content %}
-<h2>Packages</h2>
-<form method="get" class="filters-form">
-  <input name="q" placeholder="Search package name, version, ID" value="{{ search }}">
-  <select name="type"><option value="">All types</option>{% for t in package_types %}<option value="{{ t }}" {% if t == package_type %}selected{% endif %}>{{ t }}</option>{% endfor %}</select>
-  <select name="status"><option value="">All security states</option><option value="vulnerable" {% if status == 'vulnerable' %}selected{% endif %}>Vulnerable</option><option value="fixable" {% if status == 'fixable' %}selected{% endif %}>Fixable</option><option value="clean" {% if status == 'clean' %}selected{% endif %}>No known vulnerabilities</option></select>
-  <button>Apply</button>
-</form>
-<table>
-<tr><th>Type</th><th>Name</th><th>Version</th><th>Security Status</th><th>Vulnerabilities</th><th>Artifacts</th><th>Critical/High</th></tr>
-{% for item in packages %}
-<tr>
-  <td>{{ item.package_type }}</td>
-  <td><a href="{{ url_for('web.package_detail', package_id=item.package_id) }}">{{ item.package_name }}</a></td>
-  <td>{{ item.package_version }}</td>
-  <td>{{ item.fix_status }}</td>
-  <td>{{ item.vulnerability_ids|length }}</td>
-  <td>{{ item.artifact_ids|length }}</td>
-  <td>{{ item.critical_high_count }}</td>
-</tr>
-{% endfor %}
-</table>
+<section class="page-header"><h2>Packages</h2><p class="muted">Package inventory with security impact from current findings.</p></section>
+<form method="get" class="filters-form"><input name="q" placeholder="Search package name, version, ID" value="{{ search }}"><select name="type"><option value="">All types</option>{% for t in package_types %}<option value="{{ t }}" {% if t == package_type %}selected{% endif %}>{{ t }}</option>{% endfor %}</select><select name="status"><option value="">All security states</option><option value="vulnerable" {% if status == 'vulnerable' %}selected{% endif %}>Vulnerable</option><option value="fixable" {% if status == 'fixable' %}selected{% endif %}>Fixable</option><option value="clean" {% if status == 'clean' %}selected{% endif %}>No known vulnerabilities</option></select><button>Apply</button><a class="button light" href="{{ url_for('web.packages') }}">Clear</a></form>
+{% include 'pagination.html' with context %}
+<table><tr><th>Type</th><th>Name</th><th>Version</th><th>Status</th><th>Vulnerabilities</th><th>Artifacts</th><th>Critical/High</th><th>Fixed Versions</th></tr>{% for item in packages['items'] %}<tr><td>{{ item.package_type }}</td><td><a href="{{ url_for('web.package_detail', route_id=item.route_id) }}">{{ item.package_name }}</a></td><td>{{ item.package_version }}</td><td><span class="status-badge status-{{ item.security_status|lower|replace(' ', '-') }}">{{ item.security_status }}</span></td><td class="number-cell">{{ item.vulnerability_ids|length }}</td><td class="number-cell">{{ item.artifact_ids|length }}</td><td class="number-cell">{{ item.critical_high_count }}</td><td>{% if item.fixed_versions %}<b>{{ item.fixed_versions|join(', ') }}</b>{% else %}<span class="muted">None known</span>{% endif %}</td></tr>{% endfor %}</table>
+{% include 'pagination.html' with context %}
 {% endblock %}

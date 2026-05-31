@@ -6,19 +6,28 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <header>
-    <h1>Org Security Console</h1>
-    <nav>
+  <header class="app-header">
+    <div class="header-main">
+      <div>
+        <h1>Org Security Console</h1>
+        <p>Organization security posture, vulnerabilities, packages, and remediation</p>
+      </div>
+      <div class="header-actions">
+        <a href="{{ url_for('web.reload_page') }}">Reload Data</a>
+      </div>
+    </div>
+
+    <nav class="main-nav">
       <a href="{{ url_for('web.overview') }}">Overview</a>
       <a href="{{ url_for('web.remediation') }}">Remediation</a>
       <a href="{{ url_for('web.artifacts') }}">Artifacts</a>
       <a href="{{ url_for('web.vulnerabilities') }}">Vulnerabilities</a>
       <a href="{{ url_for('web.packages') }}">Packages</a>
       <a href="{{ url_for('web.report_page') }}">Reports</a>
-      <a href="{{ url_for('web.reload_page') }}">Reload</a>
     </nav>
   </header>
-  <main>
+
+  <main class="page-content">
     {% block content %}{% endblock %}
   </main>
 </body>
