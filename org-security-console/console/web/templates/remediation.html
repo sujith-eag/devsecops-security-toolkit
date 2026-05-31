@@ -1,14 +1,18 @@
 {% extends "layout.html" %}
 {% block content %}
 <h2>Remediation</h2>
+<div class="filters">
+  <a href="{{ url_for('web.remediation') }}">All</a>
+  {% for sev in ['Critical','High','Medium','Low','Negligible','Unknown'] %}<a href="{{ url_for('web.remediation', severity=sev) }}">{{ sev }}</a>{% endfor %}
+</div>
 <table>
-<tr><th>Severity</th><th>Vulnerability</th><th>Package</th><th>Fixed Versions</th><th>Artifacts</th><th>Projects</th></tr>
+<tr><th>Severity</th><th>Vulnerability</th><th>Package</th><th>Upgrade To / Fixed Versions</th><th>Artifacts</th><th>Projects</th></tr>
 {% for item in items %}
 <tr>
   <td class="sev-{{ item.highest_severity|lower }}">{{ item.highest_severity }}</td>
   <td><a href="{{ url_for('web.vulnerability_detail', vulnerability_id=item.vulnerability_id) }}">{{ item.vulnerability_id }}</a></td>
-  <td><a href="{{ url_for('web.package_detail', package_id=item.package_id) }}">{{ item.package_id }}</a></td>
-  <td>{{ item.fixed_versions|join(', ') }}</td>
+  <td class="wrap-id"><a href="{{ url_for('web.package_detail', package_id=item.package_id) }}">{{ item.package_id }}</a></td>
+  <td><b>{{ item.fixed_versions|join(', ') }}</b></td>
   <td>{{ item.affected_artifact_count }}</td>
   <td>{{ item.affected_project_count }}</td>
 </tr>

@@ -2,19 +2,18 @@
 {% block content %}
 {% set summary = detail.summary %}{% set artifact = detail.artifact %}
 <h2>Artifact: {{ artifact.artifact_id }}</h2>
-<table>
-<tr><th>Type</th><td>{{ artifact.artifact_type }}</td></tr>
-<tr><th>Role</th><td>{{ artifact.artifact_role }}</td></tr>
-<tr><th>Projects</th><td>{{ detail.project_ids|join(', ') }}</td></tr>
-<tr><th>Packages</th><td>{{ summary.package_count }}</td></tr>
-<tr><th>Vulnerabilities</th><td>{{ summary.vulnerability_count }}</td></tr>
-<tr><th>Fixable</th><td>{{ summary.fixable_count }}</td></tr>
-<tr><th>Non-Fixable</th><td>{{ summary.not_fixable_count }}</td></tr>
-</table>
+<div class="cards compact">
+  <div class="card"><b>Type</b><span>{{ artifact.artifact_type }}</span></div>
+  <div class="card"><b>Packages</b><span>{{ summary.package_count }}</span></div>
+  <div class="card"><b>Vulnerabilities</b><span>{{ summary.vulnerability_count }}</span></div>
+  <div class="card"><b>Fixable</b><span>{{ summary.fixable_count }}</span></div>
+  <div class="card"><b>Non-Fixable</b><span>{{ summary.not_fixable_count }}</span></div>
+</div>
+<table><tr><th>Role</th><td>{{ artifact.artifact_role }}</td></tr><tr><th>Projects</th><td>{{ detail.project_ids|join(', ') or 'No project metadata' }}</td></tr></table>
 <h3>Severity Counts</h3><table><tr><th>Severity</th><th>Count</th></tr>{% for sev, count in summary.severity_counts.items() %}<tr><td>{{ sev }}</td><td>{{ count }}</td></tr>{% endfor %}</table>
 <h3>Vulnerabilities</h3>
-<table><tr><th>Severity</th><th>Vulnerability</th><th>Fix Status</th><th>Packages</th></tr>{% for vuln in detail.vulnerabilities %}<tr><td class="sev-{{ vuln.severity|lower }}">{{ vuln.severity }}</td><td><a href="{{ url_for('web.vulnerability_detail', vulnerability_id=vuln.vulnerability_id) }}">{{ vuln.vulnerability_id }}</a></td><td>{{ vuln.fix_status }}</td><td>{{ vuln.package_ids|length }}</td></tr>{% endfor %}</table>
+<table><tr><th>Severity</th><th>Vulnerability</th><th>Fix Status</th><th>Upgrade To / Fixed Versions</th><th>Packages</th></tr>{% for vuln in detail.vulnerabilities %}<tr><td class="sev-{{ vuln.severity|lower }}">{{ vuln.severity }}</td><td><a href="{{ url_for('web.vulnerability_detail', vulnerability_id=vuln.vulnerability_id) }}">{{ vuln.vulnerability_id }}</a></td><td>{{ vuln.fix_status }}</td><td>{% if vuln.fixed_versions %}<b>{{ vuln.fixed_versions|join(', ') }}</b>{% else %}<span class="muted">No fixed version known</span>{% endif %}</td><td>{{ vuln.package_ids|length }}</td></tr>{% endfor %}</table>
 <h3>Vulnerable Packages</h3>
-<table><tr><th>Type</th><th>Name</th><th>Version</th><th>Fix Status</th><th>Vulnerabilities</th></tr>{% for pkg in detail.packages %}<tr><td>{{ pkg.package_type }}</td><td><a href="{{ url_for('web.package_detail', package_id=pkg.package_id) }}">{{ pkg.package_name }}</a></td><td>{{ pkg.package_version }}</td><td>{{ pkg.fix_status }}</td><td>{{ pkg.vulnerability_ids|length }}</td></tr>{% endfor %}</table>
+<table><tr><th>Type</th><th>Name</th><th>Version</th><th>Security Status</th><th>Upgrade To / Fixed Versions</th><th>Vulnerabilities</th></tr>{% for pkg in detail.packages %}<tr><td>{{ pkg.package_type }}</td><td><a href="{{ url_for('web.package_detail', package_id=pkg.package_id) }}">{{ pkg.package_name }}</a></td><td>{{ pkg.package_version }}</td><td>{{ pkg.fix_status }}</td><td>{% if pkg.fixed_versions %}<b>{{ pkg.fixed_versions|join(', ') }}</b>{% else %}<span class="muted">No fixed version known</span>{% endif %}</td><td>{{ pkg.vulnerability_ids|length }}</td></tr>{% endfor %}</table>
 <p><a href="{{ url_for('web.download_report', report_type='artifact', artifact_id=artifact.artifact_id) }}">Download artifact report</a></p>
 {% endblock %}

@@ -4,6 +4,7 @@
 <form method="get" class="filters-form">
   <input name="q" placeholder="Search package name, version, ID" value="{{ search }}">
   <select name="type"><option value="">All types</option>{% for t in package_types %}<option value="{{ t }}" {% if t == package_type %}selected{% endif %}>{{ t }}</option>{% endfor %}</select>
+  <select name="status"><option value="">All security states</option><option value="vulnerable" {% if status == 'vulnerable' %}selected{% endif %}>Vulnerable</option><option value="fixable" {% if status == 'fixable' %}selected{% endif %}>Fixable</option><option value="clean" {% if status == 'clean' %}selected{% endif %}>No known vulnerabilities</option></select>
   <button>Apply</button>
 </form>
 <table>

@@ -15,10 +15,7 @@ def overview():
 @bp.route("/remediation")
 def remediation():
     severity = request.args.get("severity", "")
-    items = queries().remediation_items()
-    if severity:
-        items = [item for item in items if item.get("highest_severity") == severity]
-    return render_template("remediation.html", items=items, severity=severity, title="Remediation")
+    return render_template("remediation.html", items=queries().remediation_items(severity or None), severity=severity, title="Remediation")
 
 @bp.route("/artifacts")
 def artifacts():
@@ -43,7 +40,8 @@ def vulnerability_detail(vulnerability_id):
 def packages():
     package_type = request.args.get("type", "")
     search = request.args.get("q", "")
-    return render_template("packages.html", packages=queries().packages(package_type or None, search or None), package_types=queries().package_types(), package_type=package_type, search=search, title="Packages")
+    status = request.args.get("status", "")
+    return render_template("packages.html", packages=queries().packages(package_type or None, search or None, status or None), package_types=queries().package_types(), package_type=package_type, search=search, status=status, title="Packages")
 
 @bp.route("/package/<path:package_id>")
 def package_detail(package_id):
