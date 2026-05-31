@@ -1,0 +1,19 @@
+{% extends "layout.html" %}
+{% block content %}
+<h2>Artifacts</h2>
+<table>
+<tr><th>Artifact</th><th>Type</th><th>Packages</th><th>Findings</th><th>Fixable</th><th>Critical</th><th>High</th></tr>
+{% for item in artifacts %}
+{% set art = item.artifact %}
+<tr>
+  <td><a href="{{ url_for('web.artifact_detail', artifact_id=art.artifact_id) }}">{{ art.artifact_id }}</a></td>
+  <td>{{ art.artifact_type }}</td>
+  <td>{{ item.package_count }}</td>
+  <td>{{ item.finding_count }}</td>
+  <td>{{ item.fixable_count }}</td>
+  <td>{{ item.severity_counts.Critical }}</td>
+  <td>{{ item.severity_counts.High }}</td>
+</tr>
+{% endfor %}
+</table>
+{% endblock %}

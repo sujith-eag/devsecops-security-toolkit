@@ -1,0 +1,22 @@
+{% extends "layout.html" %}
+{% block content %}
+{% set summary = detail.summary %}
+{% set artifact = detail.artifact %}
+<h2>Artifact: {{ artifact.artifact_id }}</h2>
+<table>
+<tr><th>Type</th><td>{{ artifact.artifact_type }}</td></tr>
+<tr><th>Role</th><td>{{ artifact.artifact_role }}</td></tr>
+<tr><th>Projects</th><td>{{ detail.project_ids|join(', ') }}</td></tr>
+<tr><th>Packages</th><td>{{ summary.package_count }}</td></tr>
+<tr><th>Vulnerabilities</th><td>{{ summary.vulnerability_count }}</td></tr>
+<tr><th>Findings</th><td>{{ summary.finding_count }}</td></tr>
+<tr><th>Fixable</th><td>{{ summary.fixable_count }}</td></tr>
+</table>
+<h3>Severity Counts</h3>
+<table><tr><th>Severity</th><th>Count</th></tr>{% for sev, count in summary.severity_counts.items() %}<tr><td>{{ sev }}</td><td>{{ count }}</td></tr>{% endfor %}</table>
+<h3>Vulnerabilities</h3>
+<p>{% for vid in summary.vulnerability_ids %}<a class="pill" href="{{ url_for('web.vulnerability_detail', vulnerability_id=vid) }}">{{ vid }}</a>{% endfor %}</p>
+<h3>Vulnerable Packages</h3>
+<p>{% for pid in summary.vulnerable_package_ids %}<a class="pill" href="{{ url_for('web.package_detail', package_id=pid) }}">{{ pid }}</a>{% endfor %}</p>
+<p><a href="{{ url_for('web.download_report', report_type='artifact', artifact_id=artifact.artifact_id) }}">Download artifact report</a></p>
+{% endblock %}

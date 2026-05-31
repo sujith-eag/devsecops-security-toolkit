@@ -1,0 +1,17 @@
+{% extends "layout.html" %}
+{% block content %}
+{% set idx = detail.index %}
+{% set ent = detail.entity %}
+<h2>Package: {{ idx.package_name or ent.package_name }}</h2>
+<table>
+<tr><th>ID</th><td>{{ idx.package_id or ent.package_id }}</td></tr>
+<tr><th>Type</th><td>{{ idx.package_type or ent.package_type }}</td></tr>
+<tr><th>Version</th><td>{{ idx.package_version or ent.package_version }}</td></tr>
+<tr><th>Findings</th><td>{{ idx.finding_count }}</td></tr>
+<tr><th>Fixable</th><td>{{ idx.fixable_count }}</td></tr>
+<tr><th>Artifacts</th><td>{{ idx.artifact_ids|length }}</td></tr>
+<tr><th>Vulnerabilities</th><td>{{ idx.vulnerability_ids|length }}</td></tr>
+</table>
+<h3>Artifacts</h3><p>{% for aid in idx.artifact_ids %}<a class="pill" href="{{ url_for('web.artifact_detail', artifact_id=aid) }}">{{ aid }}</a>{% endfor %}</p>
+<h3>Vulnerabilities</h3><p>{% for vid in idx.vulnerability_ids %}<a class="pill" href="{{ url_for('web.vulnerability_detail', vulnerability_id=vid) }}">{{ vid }}</a>{% endfor %}</p>
+{% endblock %}

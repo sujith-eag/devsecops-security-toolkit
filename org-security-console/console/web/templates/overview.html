@@ -1,0 +1,21 @@
+{% extends "layout.html" %}
+{% block content %}
+<h2>Overview</h2>
+<div class="cards">
+  <div class="card"><b>Artifacts</b><span>{{ overview.artifact_count }}</span></div>
+  <div class="card"><b>Packages</b><span>{{ overview.package_count }}</span></div>
+  <div class="card"><b>Vulnerabilities</b><span>{{ overview.vulnerability_count }}</span></div>
+  <div class="card"><b>Findings</b><span>{{ overview.finding_count }}</span></div>
+  <div class="card"><b>Fixable</b><span>{{ overview.fixable_count }}</span></div>
+  <div class="card"><b>Remediation</b><span>{{ overview.remediation_count }}</span></div>
+</div>
+<h3>Severity Totals</h3>
+<table><tr><th>Severity</th><th>Count</th></tr>{% for sev, count in overview.severity_totals.items() %}<tr><td>{{ sev }}</td><td>{{ count }}</td></tr>{% endfor %}</table>
+<h3>Run</h3>
+<table>
+<tr><th>Started</th><td>{{ overview.run.started_at }}</td></tr>
+<tr><th>Finished</th><td>{{ overview.run.finished_at }}</td></tr>
+<tr><th>Errors</th><td>{{ overview.error_count }}</td></tr>
+<tr><th>Warnings</th><td>{{ overview.warning_count }}</td></tr>
+</table>
+{% endblock %}

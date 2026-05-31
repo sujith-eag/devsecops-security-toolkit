@@ -1,0 +1,11 @@
+{% extends "layout.html" %}
+{% block content %}
+<h2>Reports</h2>
+{% if message %}<p class="success">{{ message }}</p>{% endif %}
+<ul>
+  <li><a href="{{ url_for('web.download_report', report_type='org') }}">Download org-wide report</a></li>
+  <li><a href="{{ url_for('web.download_report', report_type='remediation') }}">Download remediation report</a></li>
+</ul>
+<form action="{{ url_for('web.write_report', report_type='org') }}" method="post"><button>Write org-wide report to /reports</button></form>
+<form action="{{ url_for('web.write_report', report_type='remediation') }}" method="post"><button>Write remediation report to /reports</button></form>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "layout.html" %}
+{% block content %}
+<h2>Packages</h2>
+<form method="get"><label>Type filter <input name="type" value="{{ package_type }}"></label><button>Apply</button></form>
+<table>
+<tr><th>Type</th><th>Name</th><th>Version</th><th>Findings</th><th>Fixable</th><th>Artifacts</th><th>Vulnerabilities</th></tr>
+{% for item in packages %}
+<tr>
+  <td>{{ item.package_type }}</td>
+  <td><a href="{{ url_for('web.package_detail', package_id=item.package_id) }}">{{ item.package_name }}</a></td>
+  <td>{{ item.package_version }}</td>
+  <td>{{ item.finding_count }}</td>
+  <td>{{ item.fixable_count }}</td>
+  <td>{{ item.artifact_ids|length }}</td>
+  <td>{{ item.vulnerability_ids|length }}</td>
+</tr>
+{% endfor %}
+</table>
+{% endblock %}

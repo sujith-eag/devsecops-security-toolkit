@@ -1,0 +1,17 @@
+{% extends "layout.html" %}
+{% block content %}
+<h2>Vulnerabilities</h2>
+<table>
+<tr><th>Severity</th><th>ID</th><th>Findings</th><th>Fixable</th><th>Artifacts</th><th>Packages</th></tr>
+{% for item in vulnerabilities %}
+<tr>
+  <td class="sev-{{ item.severity|lower }}">{{ item.severity }}</td>
+  <td><a href="{{ url_for('web.vulnerability_detail', vulnerability_id=item.vulnerability_id) }}">{{ item.vulnerability_id }}</a></td>
+  <td>{{ item.finding_count }}</td>
+  <td>{{ item.fixable_count }}</td>
+  <td>{{ item.artifact_ids|length }}</td>
+  <td>{{ item.package_ids|length }}</td>
+</tr>
+{% endfor %}
+</table>
+{% endblock %}
