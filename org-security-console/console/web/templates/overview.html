@@ -1,21 +1,20 @@
 {% extends "layout.html" %}
 {% block content %}
 <h2>Overview</h2>
+<p class="muted">Last updated: <b>{{ overview.last_updated }}</b></p>
 <div class="cards">
-  <div class="card"><b>Artifacts</b><span>{{ overview.artifact_count }}</span></div>
-  <div class="card"><b>Packages</b><span>{{ overview.package_count }}</span></div>
-  <div class="card"><b>Vulnerabilities</b><span>{{ overview.vulnerability_count }}</span></div>
-  <div class="card"><b>Findings</b><span>{{ overview.finding_count }}</span></div>
-  <div class="card"><b>Fixable</b><span>{{ overview.fixable_count }}</span></div>
-  <div class="card"><b>Remediation</b><span>{{ overview.remediation_count }}</span></div>
+  <a class="card" href="{{ url_for('web.artifacts') }}"><b>Artifacts</b><span>{{ overview.artifact_count }}</span></a>
+  <a class="card" href="{{ url_for('web.packages') }}"><b>Packages</b><span>{{ overview.package_count }}</span></a>
+  <a class="card" href="{{ url_for('web.vulnerabilities') }}"><b>Vulnerabilities</b><span>{{ overview.vulnerability_count }}</span></a>
+  <div class="card"><b>Total Findings</b><span>{{ overview.finding_count }}</span></div>
+  <a class="card" href="{{ url_for('web.vulnerabilities', fix='fixable') }}"><b>Fixable Findings</b><span>{{ overview.fixable_count }}</span></a>
+  <a class="card" href="{{ url_for('web.vulnerabilities', fix='not-fixable') }}"><b>Non-Fixable Findings</b><span>{{ overview.not_fixable_count }}</span></a>
+  <a class="card" href="{{ url_for('web.remediation') }}"><b>Remediation Actions</b><span>{{ overview.remediation_action_count }}</span></a>
+  <a class="card danger" href="{{ url_for('web.vulnerabilities', severity='Critical') }}"><b>Critical</b><span>{{ overview.critical_count }}</span></a>
+  <a class="card warn" href="{{ url_for('web.vulnerabilities', severity='High') }}"><b>High</b><span>{{ overview.high_count }}</span></a>
 </div>
-<h3>Severity Totals</h3>
-<table><tr><th>Severity</th><th>Count</th></tr>{% for sev, count in overview.severity_totals.items() %}<tr><td>{{ sev }}</td><td>{{ count }}</td></tr>{% endfor %}</table>
-<h3>Run</h3>
-<table>
-<tr><th>Started</th><td>{{ overview.run.started_at }}</td></tr>
-<tr><th>Finished</th><td>{{ overview.run.finished_at }}</td></tr>
-<tr><th>Errors</th><td>{{ overview.error_count }}</td></tr>
-<tr><th>Warnings</th><td>{{ overview.warning_count }}</td></tr>
-</table>
+<h3>Severity Summary</h3>
+<table><tr><th>Severity</th><th>Findings</th></tr>{% for sev, count in overview.severity_totals.items() %}<tr><td><a href="{{ url_for('web.vulnerabilities', severity=sev) }}">{{ sev }}</a></td><td>{{ count }}</td></tr>{% endfor %}</table>
+<h3>Run Health</h3>
+<table><tr><th>Errors</th><td>{{ overview.error_count }}</td></tr><tr><th>Warnings</th><td>{{ overview.warning_count }}</td></tr></table>
 {% endblock %}

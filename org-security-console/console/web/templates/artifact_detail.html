@@ -1,7 +1,6 @@
 {% extends "layout.html" %}
 {% block content %}
-{% set summary = detail.summary %}
-{% set artifact = detail.artifact %}
+{% set summary = detail.summary %}{% set artifact = detail.artifact %}
 <h2>Artifact: {{ artifact.artifact_id }}</h2>
 <table>
 <tr><th>Type</th><td>{{ artifact.artifact_type }}</td></tr>
@@ -9,14 +8,13 @@
 <tr><th>Projects</th><td>{{ detail.project_ids|join(', ') }}</td></tr>
 <tr><th>Packages</th><td>{{ summary.package_count }}</td></tr>
 <tr><th>Vulnerabilities</th><td>{{ summary.vulnerability_count }}</td></tr>
-<tr><th>Findings</th><td>{{ summary.finding_count }}</td></tr>
 <tr><th>Fixable</th><td>{{ summary.fixable_count }}</td></tr>
+<tr><th>Non-Fixable</th><td>{{ summary.not_fixable_count }}</td></tr>
 </table>
-<h3>Severity Counts</h3>
-<table><tr><th>Severity</th><th>Count</th></tr>{% for sev, count in summary.severity_counts.items() %}<tr><td>{{ sev }}</td><td>{{ count }}</td></tr>{% endfor %}</table>
+<h3>Severity Counts</h3><table><tr><th>Severity</th><th>Count</th></tr>{% for sev, count in summary.severity_counts.items() %}<tr><td>{{ sev }}</td><td>{{ count }}</td></tr>{% endfor %}</table>
 <h3>Vulnerabilities</h3>
-<p>{% for vid in summary.vulnerability_ids %}<a class="pill" href="{{ url_for('web.vulnerability_detail', vulnerability_id=vid) }}">{{ vid }}</a>{% endfor %}</p>
+<table><tr><th>Severity</th><th>Vulnerability</th><th>Fix Status</th><th>Packages</th></tr>{% for vuln in detail.vulnerabilities %}<tr><td class="sev-{{ vuln.severity|lower }}">{{ vuln.severity }}</td><td><a href="{{ url_for('web.vulnerability_detail', vulnerability_id=vuln.vulnerability_id) }}">{{ vuln.vulnerability_id }}</a></td><td>{{ vuln.fix_status }}</td><td>{{ vuln.package_ids|length }}</td></tr>{% endfor %}</table>
 <h3>Vulnerable Packages</h3>
-<p>{% for pid in summary.vulnerable_package_ids %}<a class="pill" href="{{ url_for('web.package_detail', package_id=pid) }}">{{ pid }}</a>{% endfor %}</p>
+<table><tr><th>Type</th><th>Name</th><th>Version</th><th>Fix Status</th><th>Vulnerabilities</th></tr>{% for pkg in detail.packages %}<tr><td>{{ pkg.package_type }}</td><td><a href="{{ url_for('web.package_detail', package_id=pkg.package_id) }}">{{ pkg.package_name }}</a></td><td>{{ pkg.package_version }}</td><td>{{ pkg.fix_status }}</td><td>{{ pkg.vulnerability_ids|length }}</td></tr>{% endfor %}</table>
 <p><a href="{{ url_for('web.download_report', report_type='artifact', artifact_id=artifact.artifact_id) }}">Download artifact report</a></p>
 {% endblock %}
