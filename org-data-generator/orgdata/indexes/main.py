@@ -1,6 +1,4 @@
-"""
-Standalone CLI entrypoint for building query indexes from org-data/current.
-
+"""Standalone CLI entrypoint for building production query indexes.
 This can be called independently or invoked after base org-data generation. It
 builds index files from normalized entities and relationships.
 """
@@ -9,11 +7,10 @@ import argparse
 from pathlib import Path
 
 from orgdata.indexes.builder import build_all_indexes
-from orgdata.runtime.io import write_json
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Build query indexes from normalized org-data current directory.")
+    parser = argparse.ArgumentParser(description="Build production query indexes from org-data/current.")
     parser.add_argument("current_dir", help="Path to org-data/current")
     args = parser.parse_args()
 
@@ -21,10 +18,9 @@ def main():
     if not current_dir.is_dir():
         raise SystemExit(f"Current org-data directory does not exist: {current_dir}")
 
-    print(f"[org-data:indexes] Building indexes from {current_dir}", flush=True)
+    print(f"[org-data:indexes] Building production indexes from {current_dir}", flush=True)
     metadata = build_all_indexes(current_dir)
-    write_json(current_dir / "indexes" / "index-metadata.json", metadata)
-    print(f"[org-data:indexes] Index build completed: {metadata}", flush=True)
+    print(f"[org-data:indexes] Index build completed: {metadata.get('counts', {})}", flush=True)
 
 
 if __name__ == "__main__":
