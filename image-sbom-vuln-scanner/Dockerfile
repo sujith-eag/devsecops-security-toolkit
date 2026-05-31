@@ -16,6 +16,9 @@ RUN addgroup -S scanner && adduser -S scanner -G scanner
 RUN mkdir -p /scanner /cache/grype
 
 COPY scan-from-tar.sh /scanner/scan-from-tar.sh
-RUN chmod 0755 /scanner /scanner/scan-from-tar.sh && chmod -R 777 /cache
+COPY scan-from-dir.sh /scanner/scan-from-dir.sh
+
+RUN chmod +x /scanner/scan-from-tar.sh /scanner/scan-from-dir.sh \
+    && chmod -R u+rwX,g+rwX /scanner /cache
 
 ENTRYPOINT []

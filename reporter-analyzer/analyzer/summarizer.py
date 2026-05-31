@@ -80,6 +80,7 @@ def build_cve_groups(records):
         key=lambda g: (severity_rank(g.get("severity")), g.get("vulnerability_id", ""))
     )
 
+
 def build_summary(metadata, records, sbom, warnings, generated_at, raw_match_count):
     severity_counter = Counter(normalized_severity(r.get("severity")) for r in records)
     package_counter = Counter(r.get("package_name") or "unknown" for r in records)
@@ -111,6 +112,7 @@ def build_summary(metadata, records, sbom, warnings, generated_at, raw_match_cou
         },
         "project": metadata.get("project", {}),
         "image": metadata.get("image", {}),
+        "source": metadata.get("source", {}),
         "scan": metadata.get("scan", {}),
         "summary": {
             "raw_match_count": raw_match_count,
