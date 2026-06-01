@@ -1,9 +1,60 @@
 {% extends "layout.html" %}
 {% block content %}
-<section class="page-header"><h2>Vulnerabilities</h2><p class="muted">One row per unique CVE/advisory.</p></section>
+<section class="page-header"><h2>Vulnerabilities</h2><p class="muted">Security issues grouped by vulnerability and affected package. Fixable and non-fixable issues are handled in one workspace.</p></section>
 <div class="metric-row"><div class="metric-card"><span>Total</span><b>{{ summary.total }}</b></div><div class="metric-card"><span>Fixable</span><b>{{ summary.fixable }}</b></div><div class="metric-card"><span>Mixed</span><b>{{ summary.mixed }}</b></div><div class="metric-card"><span>Not fixable</span><b>{{ summary.not_fixable }}</b></div></div>
-<form method="get" class="filters-form"><input name="q" placeholder="Search vulnerability, CWE, severity" value="{{ search }}"><select name="severity"><option value="">All severities</option>{% for sev in ['Critical','High','Medium','Low','Negligible','Unknown'] %}<option value="{{ sev }}" {% if severity == sev %}selected{% endif %}>{{ sev }} ({{ summary.severity_counts.get(sev, 0) }})</option>{% endfor %}</select><select name="fix"><option value="">All fix states</option><option value="fixable" {% if fix == 'fixable' %}selected{% endif %}>Fixable</option><option value="not-fixable" {% if fix == 'not-fixable' %}selected{% endif %}>Non-fixable</option></select><button>Apply</button><a class="button light" href="{{ url_for('web.vulnerabilities') }}">Clear</a></form>
+<form method="get" class="filters-form"><input name="q" placeholder="Search vulnerability, package, CWE, description" value="{{ search }}"><select name="severity"><option value="">All severities</option>{% for sev in ['Critical','High','Medium','Low','Negligible','Unknown'] %}<option value="{{ sev }}" {% if severity == sev %}selected{% endif %}>{{ sev }}</option>{% endfor %}</select><select name="fix"><option value="">All fix states</option><option value="fixable" {% if fix == 'fixable' %}selected{% endif %}>Fixable</option><option value="not-fixable" {% if fix == 'not-fixable' %}selected{% endif %}>Non-fixable</option></select><select name="type"><option value="">All package types</option>{% for t in package_types %}<option value="{{ t }}" {% if package_type == t %}selected{% endif %}>{{ t }}</option>{% endfor %}</select><button>Apply</button><a class="button light" href="{{ url_for('web.vulnerabilities') }}">Clear</a></form>
+
+<div class="summary-strip">
+  {% if fix == 'fixable' %}
+    <span>Showing fixable rows: <b>{{ action_view.fixable|length }}</b></span>
+    <a href="{{ url_for('web.vulnerabilities', severity=severity, q=search, type=package_type) }}">Show all matching rows</a>
+  {% elif fix == 'not-fixable' %}
+    <span>Showing non-fixable rows: <b>{{ action_view.not_fixable|length }}</b></span>
+    <a href="{{ url_for('web.vulnerabilities', severity=severity, q=search, type=package_type) }}">Show all matching rows</a>
+  {% else %}
+    <span>Matching rows: <b>{{ action_view.all|length }}</b></span>
+    <a href="{{ url_for('web.vulnerabilities', fix='fixable', severity=severity, q=search, type=package_type) }}">Fixable: <b>{{ action_view.fixable|length }}</b></a>
+    <a href="{{ url_for('web.vulnerabilities', fix='not-fixable', severity=severity, q=search, type=package_type) }}">Non-fixable: <b>{{ action_view.not_fixable|length }}</b></a>
+  {% endif %}
+</div>
+
 {% include 'pagination.html' with context %}
-<table class="data-table"><tr><th>Severity</th><th>Vulnerability</th><th>Status</th><th>Artifacts</th><th>Packages</th><th>Fixed Versions</th></tr>{% for item in vulnerabilities['items'] %}<tr><td class="sev-{{ (item.highest_severity or item.severity)|lower }}">{{ item.highest_severity or item.severity }}</td><td class="wrap-id"><a href="{{ url_for('web.vulnerability_detail', route_id=item.route_id) }}">{{ item.display_id or item.vulnerability_id }}</a></td><td><span class="status-badge status-{{ item.security_status|lower|replace(' ', '-') }}">{{ item.security_status }}</span></td><td class="number-cell">{{ item.artifact_ids|length }}</td><td class="number-cell">{{ item.package_ids|length }}</td><td>{% if item.fixed_versions %}<b>{{ item.fixed_versions|join(', ') }}</b>{% else %}<span class="muted">None known</span>{% endif %}</td></tr>{% endfor %}</table>
+
+<table class="data-table">
+  <tr>
+    <th>Severity</th>
+    <th>Vulnerability</th>
+    <th>Package</th>
+    <th>Current Version</th>
+    <th>Upgrade To / Fixed Versions</th>
+    <th>Artifacts</th>
+  </tr>
+
+  {% for row in rows %}
+  <tr>
+    <td class="sev-{{ row.severity|lower }}">{{ row.severity }}</td>
+    <td>
+      <a href="{{ url_for('web.vulnerability_detail', route_id=row.vulnerability_route_id) }}">
+        {{ row.vulnerability_display_id }}
+      </a>
+    </td>
+    <td>
+      <a href="{{ url_for('web.package_detail', route_id=row.package_route_id) }}">
+        {{ row.package_name }}
+      </a>
+      <span class="muted">({{ row.package_type }})</span>
+    </td>
+    <td>{{ row.package_version }}</td>
+    <td>
+      {% if row.fixed_versions %}
+        <b>{{ row.fixed_versions|join(', ') }}</b>
+      {% else %}
+        <span class="muted">No fixed version known</span>
+      {% endif %}
+    </td>
+    <td class="number-cell">{{ row.affected_artifact_count }}</td>
+  </tr>
+  {% endfor %}
+</table>
 {% include 'pagination.html' with context %}
 {% endblock %}
