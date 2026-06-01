@@ -1,8 +1,7 @@
 """Query service for production org-data indexes.
 
-This layer prepares data for templates while keeping templates independent of
-partition layout and raw org-data files. It relies on production index fields
-such as route_id, display_id, security_status, fixed_versions, and summaries.
+Prepares display-ready data for the security console. The service uses production
+indexes and manifests; templates should not know partition layout details.
 """
 
 from datetime import datetime
@@ -38,23 +37,11 @@ def paginate(items, page=1, per_page=DEFAULT_PER_PAGE):
     page = min(page, total_pages)
     start = (page - 1) * per_page
     end = start + per_page
-    return {
-        "items": items[start:end],
-        "page": page,
-        "per_page": per_page,
-        "total": total,
-        "total_pages": total_pages,
-        "has_prev": page > 1,
-        "has_next": page < total_pages,
-        "prev_page": page - 1,
-        "next_page": page + 1,
-        "start": start + 1 if total else 0,
-        "end": min(end, total),
-    }
+    return {"items": items[start:end], "page": page, "per_page": per_page, "total": total, "total_pages": total_pages, "has_prev": page > 1, "has_next": page < total_pages, "prev_page": page - 1, "next_page": page + 1, "start": start + 1 if total else 0, "end": min(end, total)}
 
 
 class QueryService:
-    """Provides display-ready dashboard/query methods on top of DataStore."""
+    """Provides dashboard/query methods on top of DataStore."""
 
     def __init__(self, store):
         self.store = store
@@ -87,27 +74,38 @@ class QueryService:
         for item in self.store.remediation:
             if severity and item.get("highest_severity") != severity:
                 continue
-            haystack = item.get("search_text") or " ".join([
-                item.get("vulnerability_id", ""),
-                item.get("package_id", ""),
-                " ".join(item.get("fixed_versions", []) or []),
-            ]).lower()
+            haystack = item.get("search_text") or " ".join([item.get("vulnerability_id", ""), item.get("package_id", ""), " ".join(item.get("fixed_versions", []) or [])]).lower()
             if search_text and search_text not in haystack:
                 continue
             items.append(item)
         return sorted(items, key=lambda x: (-severity_rank(x.get("highest_severity")), -x.get("affected_artifact_count", 0), x.get("vulnerability_id", "")))
+
+    def _remediation_for_pair(self, vulnerability_id, package_id):
+        return [item for item in self.store.remediation if item.get("vulnerability_id") == vulnerability_id and item.get("package_id") == package_id]
+
+    def _fixed_versions_for_pair(self, vulnerability_id, package_id):
+        versions = []
+        for item in self._remediation_for_pair(vulnerability_id, package_id):
+            for version in item.get("fixed_versions", []) or []:
+                if version and version not in versions:
+                    versions.append(version)
+        return sorted(versions)
+
+    def _affected_artifacts_for_pair(self, vulnerability_id, package_id, candidate_artifact_ids):
+        affected = []
+        for artifact_id in candidate_artifact_ids or []:
+            for finding in self.store.artifact_findings(artifact_id):
+                if finding.get("vulnerability_id") == vulnerability_id and finding.get("package_id") == package_id:
+                    affected.append(artifact_id)
+                    break
+        return sorted(set(affected))
 
     def artifacts(self, search=None):
         search_text = (search or "").lower().strip()
         items = []
         for item in self.store.by_artifact.values():
             artifact = item.get("artifact") or {}
-            haystack = item.get("search_text") or " ".join([
-                item.get("canonical_id", ""),
-                artifact.get("artifact_id", ""),
-                artifact.get("artifact_type", ""),
-                artifact.get("artifact_role", ""),
-            ]).lower()
+            haystack = item.get("search_text") or " ".join([item.get("canonical_id", ""), artifact.get("artifact_id", ""), artifact.get("artifact_type", ""), artifact.get("artifact_role", "")]).lower()
             if search_text and search_text not in haystack:
                 continue
             items.append(item)
@@ -120,18 +118,12 @@ class QueryService:
         vulnerability_ids = sorted({item.get("vulnerability_id") for item in findings if item.get("vulnerability_id")})
         package_ids = sorted({item.get("package_id") for item in findings if item.get("package_id")})
         vulnerabilities = [self.store.vulnerability_index(vid) for vid in vulnerability_ids]
-        packages = [self.store.package_index(pid) for pid in package_ids]
+        packages = [self.package_detail(pid).get("index", {}) for pid in package_ids]
         vulnerabilities = [v for v in vulnerabilities if v]
         packages = [p for p in packages if p]
         vulnerabilities.sort(key=lambda x: (-severity_rank(x.get("highest_severity") or x.get("severity")), not x.get("remediation_available", False), x.get("vulnerability_id", "")))
         packages.sort(key=lambda x: (-x.get("critical_high_count", 0), not x.get("remediation_available", False), x.get("package_name", "")))
-        return {
-            "summary": summary,
-            "artifact": (summary.get("artifact") or self.store.entities.get_artifact(artifact_id)),
-            "project_ids": summary.get("project_ids", []),
-            "vulnerabilities": vulnerabilities,
-            "packages": packages,
-        }
+        return {"summary": summary, "artifact": (summary.get("artifact") or self.store.entities.get_artifact(artifact_id)), "project_ids": summary.get("project_ids", []), "vulnerabilities": vulnerabilities, "packages": packages}
 
     def vulnerabilities(self, severity=None, fix=None, search=None):
         search_text = (search or "").lower().strip()
@@ -144,7 +136,7 @@ class QueryService:
                 continue
             if fix == "not-fixable" and item.get("remediation_available"):
                 continue
-            haystack = item.get("search_text") or " ".join([item.get("vulnerability_id", ""), sev or "", " ".join(item.get("cwes", []) or [])]).lower()
+            haystack = item.get("search_text") or " ".join([item.get("vulnerability_id", ""), sev or "", " ".join(item.get("aliases", []) or []), " ".join(item.get("cwes", []) or [])]).lower()
             if search_text and search_text not in haystack:
                 continue
             items.append(item)
@@ -165,11 +157,49 @@ class QueryService:
                 not_fixable += 1
         return {"total": len(items), "severity_counts": severity_counts, "fixable": fixable, "mixed": mixed, "not_fixable": not_fixable}
 
+    def vulnerability_action_view(self, severity=None, fix=None, search=None, package_type=None):
+        rows = []
+        for vuln in self.vulnerabilities(severity=severity, search=search):
+            vulnerability_id = vuln.get("vulnerability_id")
+            entity = self.store.vulnerability_entity(vulnerability_id)
+            description = entity.get("description") or ""
+            for package_id in vuln.get("package_ids", []) or []:
+                package = self.store.package_index(package_id)
+                if not package:
+                    continue
+                if package_type and package.get("package_type") != package_type:
+                    continue
+                fixed_versions = self._fixed_versions_for_pair(vulnerability_id, package_id)
+                row_fixable = bool(fixed_versions)
+                if fix == "fixable" and not row_fixable:
+                    continue
+                if fix == "not-fixable" and row_fixable:
+                    continue
+                affected_artifacts = self._affected_artifacts_for_pair(vulnerability_id, package_id, vuln.get("artifact_ids", []))
+                rows.append({
+                    "vulnerability_id": vulnerability_id,
+                    "vulnerability_route_id": vuln.get("route_id"),
+                    "vulnerability_display_id": vuln.get("display_id") or vulnerability_id,
+                    "severity": vuln.get("highest_severity") or vuln.get("severity"),
+                    "description": description,
+                    "package_id": package_id,
+                    "package_route_id": package.get("route_id"),
+                    "package_name": package.get("package_name"),
+                    "package_version": package.get("package_version"),
+                    "package_type": package.get("package_type"),
+                    "fixed_versions": fixed_versions,
+                    "fixable": row_fixable,
+                    "affected_artifact_count": len(affected_artifacts),
+                    "affected_artifact_ids": affected_artifacts,
+                })
+        rows.sort(key=lambda x: (-severity_rank(x.get("severity")), not x.get("fixable"), -x.get("affected_artifact_count", 0), x.get("vulnerability_id", ""), x.get("package_name", "")))
+        return {"fixable": [r for r in rows if r["fixable"]], "not_fixable": [r for r in rows if not r["fixable"]], "all": rows}
+
     def vulnerability_detail(self, id_or_route):
         index_item = self.store.vulnerability_index(id_or_route)
         vulnerability_id = index_item.get("vulnerability_id") or self.store.resolver.canonical("vulnerabilities", id_or_route)
         entity = self.store.vulnerability_entity(vulnerability_id)
-        packages = [self.store.package_index(pid) for pid in index_item.get("package_ids", [])]
+        packages = [self.package_detail(pid).get("index", {}) for pid in index_item.get("package_ids", [])]
         artifacts = [self.store.artifact_index(aid) for aid in index_item.get("artifact_ids", [])]
         packages = [p for p in packages if p]
         artifacts = [a for a in artifacts if a]
@@ -210,18 +240,14 @@ class QueryService:
         artifacts = [self.store.artifact_index(aid) for aid in index_item.get("artifact_ids", [])]
         vulnerabilities = [v for v in vulnerabilities if v]
         artifacts = [a for a in artifacts if a]
+        if not index_item.get("licenses") and entity.get("licenses"):
+            index_item = {**index_item, "licenses": entity.get("licenses", [])}
         vulnerabilities.sort(key=lambda x: (-severity_rank(x.get("highest_severity") or x.get("severity")), not x.get("remediation_available", False), x.get("vulnerability_id", "")))
         artifacts.sort(key=lambda x: (-x.get("fixable_count", 0), -x.get("finding_count", 0), (x.get("artifact") or {}).get("artifact_id", "")))
         return {"index": index_item, "entity": entity, "vulnerabilities": vulnerabilities, "artifacts": artifacts}
 
     def run_health(self):
-        return {
-            "errors": self.store.run_errors,
-            "warnings": self.store.reference_warnings,
-            "index_validation": self.store.index_validation,
-            "index_metadata": self.store.index_metadata,
-            "index_summary": self.store.index_summary,
-        }
+        return {"errors": self.store.run_errors, "warnings": self.store.reference_warnings, "index_validation": self.store.index_validation, "index_metadata": self.store.index_metadata, "index_summary": self.store.index_summary}
 
     def paginate(self, items, page=1, per_page=DEFAULT_PER_PAGE):
         return paginate(items, page, per_page)

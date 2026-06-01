@@ -11,10 +11,15 @@ def store(): return current_app.config["DATA_STORE"]
 
 def paginated(items):
     page = request.args.get("page", 1, type=int)
-    page_data = queries().paginate(items, page, DEFAULT_PER_PAGE)
+    per_page = request.args.get("per_page", DEFAULT_PER_PAGE, type=int)
+    page_data = queries().paginate(items, page, per_page)
+
     base_args = request.args.to_dict(flat=True)
-    page_data["prev_args"] = dict(base_args, page=page_data["prev_page"])
-    page_data["next_args"] = dict(base_args, page=page_data["next_page"])
+    prev_args = dict(base_args, page=page_data["prev_page"], per_page=page_data["per_page"])
+    next_args = dict(base_args, page=page_data["next_page"], per_page=page_data["per_page"])
+
+    page_data["prev_args"] = prev_args
+    page_data["next_args"] = next_args
     return page_data
 
 @bp.route("/")
@@ -22,31 +27,13 @@ def overview(): return render_template("overview.html", overview=queries().overv
 
 @bp.route("/remediation")
 def remediation():
-    severity = request.args.get("severity", "")
-    search = request.args.get("q", "")
-    all_items = queries().remediation_items(severity or None, search or None)
-    page_data = paginated(all_items)
-    return render_template(
-        "remediation.html",
-        items=page_data,
-        page=page_data,
-        severity=severity,
-        search=search,
-        title="Remediation",
-    )
+    return redirect(url_for("web.vulnerabilities", fix="fixable"))
 
 @bp.route("/artifacts")
 def artifacts():
     search = request.args.get("q", "")
-    all_items = queries().artifacts(search or None)
-    page_data = paginated(all_items)
-    return render_template(
-        "artifacts.html",
-        artifacts=page_data,
-        page=page_data,
-        search=search,
-        title="Artifacts",
-    )
+    items = queries().artifacts(search or None)
+    return render_template("artifacts.html", artifacts=paginated(items), page=paginated(items), search=search, title="Artifacts")
 
 @bp.route("/artifact/<route_id>")
 def artifact_detail(route_id): return render_template("artifact_detail.html", detail=queries().artifact_detail(route_id), title="Artifact Detail")
@@ -56,16 +43,38 @@ def vulnerabilities():
     severity = request.args.get("severity", "")
     fix = request.args.get("fix", "")
     search = request.args.get("q", "")
-    all_items = queries().vulnerabilities(severity or None, fix or None, search or None)
-    page_data = paginated(all_items)
+    package_type = request.args.get("type", "")
+
+    action_view = queries().vulnerability_action_view(
+        severity or None,
+        fix or None,
+        search or None,
+        package_type or None,
+    )
+
+    all_rows = (
+        action_view["fixable"]
+        if fix == "fixable"
+        else action_view["not_fixable"]
+        if fix == "not-fixable"
+        else action_view["all"]
+    )
+
+    page_data = paginated(all_rows)
+
     return render_template(
         "vulnerabilities.html",
-        vulnerabilities=page_data,
+        rows=page_data["items"],
         page=page_data,
-        summary=queries().vulnerability_summary(all_items),
+        action_view=action_view,
+        summary=queries().vulnerability_summary(
+            queries().vulnerabilities(severity or None, fix or None, search or None)
+        ),
         severity=severity,
         fix=fix,
         search=search,
+        package_type=package_type,
+        package_types=queries().package_types(),
         title="Vulnerabilities",
     )
 
@@ -79,16 +88,7 @@ def packages():
     status = request.args.get("status", "")
     all_items = queries().packages(package_type or None, search or None, status or None)
     page_data = paginated(all_items)
-    return render_template(
-        "packages.html",
-        packages=page_data,
-        page=page_data,
-        package_types=queries().package_types(),
-        package_type=package_type,
-        search=search,
-        status=status,
-        title="Packages",
-    )
+    return render_template("packages.html", packages=page_data, page=page_data, package_types=queries().package_types(), package_type=package_type, search=search, status=status, title="Packages")
 
 @bp.route("/package/<route_id>")
 def package_detail(route_id): return render_template("package_detail.html", detail=queries().package_detail(route_id), title="Package Detail")

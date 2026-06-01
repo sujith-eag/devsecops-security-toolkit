@@ -1,10 +1,9 @@
-"""
-Builds vulnerability entities and finding relationships from Grype SBOM output.
+"""Build vulnerability entities and finding relationships from Grype SBOM output.
 
-A vulnerability entity stores CVE/advisory metadata once. A finding links one
-vulnerability to one package in one artifact. Findings are deduplicated by
-`artifact_id + vulnerability_id + package_id` and later grouped by artifact,
-fixability, and severity.
+This module normalizes Grype vulnerability IDs into a canonical vulnerability
+identity. Where a GHSA/advisory clearly maps to one CVE through EPSS/CWE data or
+related vulnerability IDs, the CVE is used as the canonical vulnerability ID.
+The original Grype ID is preserved as source/alias metadata.
 """
 
 from orgdata.normalize.ids import finding_id, normalize_package_type, package_id_from_values
@@ -26,9 +25,84 @@ def merge_unique(existing, values):
     return merged
 
 
+def id_type(value):
+    value = str(value or "")
+    if value.startswith("CVE-"):
+        return "CVE"
+    if value.startswith("GHSA-"):
+        return "GHSA"
+    return "other"
+
+
+def unique_cves(values):
+    return sorted({str(value) for value in values if str(value).startswith("CVE-")})
+
+
+def cve_from_epss_cwes(vulnerability):
+    candidates = []
+    for item in vulnerability.get("epss") or []:
+        if isinstance(item, dict) and item.get("cve"):
+            candidates.append(item.get("cve"))
+    for item in vulnerability.get("cwes") or []:
+        if isinstance(item, dict) and item.get("cve"):
+            candidates.append(item.get("cve"))
+    cves = unique_cves(candidates)
+    return cves[0] if len(cves) == 1 else ""
+
+
+def cve_from_related(match):
+    candidates = []
+    for item in match.get("relatedVulnerabilities") or []:
+        if isinstance(item, dict) and item.get("id"):
+            candidates.append(item.get("id"))
+    cves = unique_cves(candidates)
+    return cves[0] if len(cves) == 1 else ""
+
+
+def related_ids(match):
+    ids = []
+    for item in match.get("relatedVulnerabilities") or []:
+        if isinstance(item, dict) and item.get("id"):
+            ids.append(item.get("id"))
+    return sorted(set(ids))
+
+
+def vulnerability_identity(match):
+    vuln = match.get("vulnerability") or {}
+    primary_id = str(vuln.get("id") or "")
+
+    if primary_id.startswith("CVE-"):
+        canonical_id = primary_id
+    else:
+        canonical_id = cve_from_epss_cwes(vuln) or cve_from_related(match) or primary_id
+
+    all_ids = merge_unique([primary_id], related_ids(match))
+    aliases = sorted([item for item in all_ids if item and item != canonical_id])
+
+    return {
+        "canonical_vulnerability_id": canonical_id,
+        "source_vulnerability_id": primary_id if primary_id != canonical_id else "",
+        "aliases": aliases,
+    }
+
+
 def fix_versions(vulnerability):
     versions = (vulnerability.get("fix") or {}).get("versions") or []
     return sorted(str(v) for v in versions if v not in (None, ""))
+
+
+def fix_observed(vulnerability):
+    available = (vulnerability.get("fix") or {}).get("available") or []
+    first_observed = [item for item in available if isinstance(item, dict) and item.get("kind") == "first-observed"]
+    candidates = first_observed or [item for item in available if isinstance(item, dict)]
+    if not candidates:
+        return None
+    selected = sorted(candidates, key=lambda x: str(x.get("date", "")))[0]
+    return {
+        "version": selected.get("version", ""),
+        "date": selected.get("date", ""),
+        "kind": selected.get("kind", ""),
+    }
 
 
 def match_types(match):
@@ -61,12 +135,32 @@ def cvss(vulnerability):
     return result
 
 
+def cvss_summary(cvss_items):
+    valid = [item for item in cvss_items or [] if item.get("base_score") is not None]
+    if not valid:
+        return None
+    selected = sorted(valid, key=lambda x: float(x.get("base_score") or 0), reverse=True)[0]
+    return {
+        "base_score": selected.get("base_score"),
+        "exploitability_score": selected.get("exploitability_score"),
+        "impact_score": selected.get("impact_score"),
+        "version": selected.get("version", ""),
+        "vector": selected.get("vector", ""),
+        "source": selected.get("source", ""),
+        "type": selected.get("type", ""),
+    }
+
+
 def epss(vulnerability):
     values = vulnerability.get("epss") or []
     if not values:
         return None
     latest = sorted(values, key=lambda x: x.get("date", ""), reverse=True)[0]
-    return {"score": latest.get("epss"), "percentile": latest.get("percentile"), "date": latest.get("date")}
+    return {
+        "score": latest.get("epss"),
+        "percentile": latest.get("percentile"),
+        "date": latest.get("date"),
+    }
 
 
 def vulnerability_bucket(vulnerability_id):
@@ -78,21 +172,26 @@ def vulnerability_bucket(vulnerability_id):
         return "GHSA"
     return "other"
 
-
 def build_vulnerability(match):
     vuln = match.get("vulnerability") or {}
-    vulnerability_id = str(vuln.get("id") or "")
+    identity = vulnerability_identity(match)
+    cvss_items = cvss(vuln)
+    risk = vuln.get("risk")
+
     return {
-        "vulnerability_id": vulnerability_id,
+        "vulnerability_id": identity["canonical_vulnerability_id"],
+        "source_vulnerability_id": identity["source_vulnerability_id"],
+        "aliases": identity["aliases"],
         "severity": normalize_severity(vuln.get("severity")),
         "namespaces": as_list(vuln.get("namespace")),
         "data_sources": as_list(vuln.get("dataSource")),
         "description": vuln.get("description", ""),
         "urls": merge_unique([], vuln.get("urls") or []),
         "cwes": cwes(vuln),
-        "cvss": cvss(vuln),
+        "cvss_summary": cvss_summary(cvss_items),
         "epss": epss(vuln),
-        "risk_score": vuln.get("risk"),
+        "risk_score": round(float(risk), 6) if risk is not None else None,
+        "fix_observed": fix_observed(vuln),
     }
 
 
@@ -109,28 +208,48 @@ def merge_cvss(existing, values):
     return merged
 
 
+def latest_epss(existing, new):
+    if not existing:
+        return new
+    if not new:
+        return existing
+    return new if str(new.get("date", "")) > str(existing.get("date", "")) else existing
+
+
+def better_cvss_summary(existing, new):
+    if not existing:
+        return new
+    if not new:
+        return existing
+    return new if float(new.get("base_score") or 0) > float(existing.get("base_score") or 0) else existing
+
+
 def merge_vulnerability(existing, new):
     existing["severity"] = highest_severity([existing.get("severity"), new.get("severity")])
+    existing["aliases"] = merge_unique(existing.get("aliases"), new.get("aliases"))
     existing["namespaces"] = merge_unique(existing.get("namespaces"), new.get("namespaces"))
     existing["data_sources"] = merge_unique(existing.get("data_sources"), new.get("data_sources"))
     existing["urls"] = merge_unique(existing.get("urls"), new.get("urls"))
     existing["cwes"] = merge_unique(existing.get("cwes"), new.get("cwes"))
-    existing["cvss"] = merge_cvss(existing.get("cvss"), new.get("cvss"))
+    existing["cvss_summary"] = better_cvss_summary(existing.get("cvss_summary"), new.get("cvss_summary"))
     if not existing.get("description") and new.get("description"):
         existing["description"] = new.get("description")
-    if not existing.get("epss") or (new.get("epss") and str(new["epss"].get("date", "")) > str(existing["epss"].get("date", ""))):
-        existing["epss"] = new.get("epss")
+    existing["epss"] = latest_epss(existing.get("epss"), new.get("epss"))
+    if not existing.get("fix_observed") and new.get("fix_observed"):
+        existing["fix_observed"] = new.get("fix_observed")
     if existing.get("risk_score") is None:
         existing["risk_score"] = new.get("risk_score")
     elif new.get("risk_score") is not None:
         existing["risk_score"] = max(existing.get("risk_score"), new.get("risk_score"))
+    existing["source_vulnerability_id"] = existing.get("source_vulnerability_id") or new.get("source_vulnerability_id")
     return existing
 
 
 def build_finding(match, artifact_id):
     vuln = match.get("vulnerability") or {}
+    identity = vulnerability_identity(match)
     artifact = match.get("artifact") or {}
-    vulnerability_id = str(vuln.get("id") or "")
+    vulnerability_id = identity["canonical_vulnerability_id"]
     package_type = normalize_package_type(artifact.get("type") or "")
     package_name = str(artifact.get("name") or "")
     package_version = str(artifact.get("version") or "")
@@ -144,6 +263,8 @@ def build_finding(match, artifact_id):
         "artifact_id": artifact_id,
         "package_id": package_id,
         "vulnerability_id": vulnerability_id,
+        "source_vulnerability_id": identity["source_vulnerability_id"],
+        "vulnerability_aliases": identity["aliases"],
         "severity": normalize_severity(vuln.get("severity")),
         "fix_state": fix_state,
         "fix_available": bool(fixed_versions),
@@ -160,6 +281,7 @@ def merge_finding(existing, new):
     if existing.get("fix_state") != "fixed" and new.get("fix_state") == "fixed":
         existing["fix_state"] = "fixed"
     existing["match_types"] = sorted(merge_unique(existing.get("match_types"), new.get("match_types")))
+    existing["vulnerability_aliases"] = sorted(merge_unique(existing.get("vulnerability_aliases"), new.get("vulnerability_aliases")))
     existing["duplicate_count"] = existing.get("duplicate_count", 1) + new.get("duplicate_count", 1)
     return existing
 
