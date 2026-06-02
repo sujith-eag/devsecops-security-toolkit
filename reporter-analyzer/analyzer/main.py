@@ -13,7 +13,6 @@ from analyzer.markdown_writer import write_markdown_report
 from analyzer.deduplicator import deduplicate_records
 
 
-
 def fix_permissions(path):
     try:
         for root, dirs, files in os.walk(path):
