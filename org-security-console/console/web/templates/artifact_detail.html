@@ -1,11 +1,51 @@
 {% extends "layout.html" %}
 {% block content %}
-{% set summary = detail.summary %}{% set artifact = detail.artifact %}
-<h2>Artifact: {{ artifact.artifact_id }}</h2>
-<div class="cards compact"><div class="card"><b>Type</b><span>{{ artifact.artifact_type }}</span></div><div class="card"><b>Status</b><span>{{ summary.security_status }}</span></div><div class="card"><b>Packages</b><span>{{ summary.package_count }}</span></div><div class="card"><b>Vulnerabilities</b><span>{{ summary.vulnerability_ids|length }}</span></div><div class="card"><b>Fixable</b><span>{{ summary.fixable_count }}</span></div></div>
-<table><tr><th>Canonical ID</th><td class="wrap-id">{{ summary.canonical_id or artifact.artifact_id }}</td></tr><tr><th>Role</th><td>{{ artifact.artifact_role }}</td></tr><tr><th>Projects</th><td>{{ detail.project_ids|join(', ') or 'No project metadata' }}</td></tr></table>
-<h3>Severity Counts</h3><table><tr><th>Severity</th><th>Count</th></tr>{% for sev, count in summary.severity_counts.items() %}<tr><td>{{ sev }}</td><td class="number-cell">{{ count }}</td></tr>{% endfor %}</table>
-<h3>Vulnerabilities</h3><table><tr><th>Severity</th><th>Vulnerability</th><th>Status</th><th>Fixed Versions</th><th>Packages</th></tr>{% for vuln in detail.vulnerabilities %}<tr><td class="sev-{{ (vuln.highest_severity or vuln.severity)|lower }}">{{ vuln.highest_severity or vuln.severity }}</td><td><a href="{{ url_for('web.vulnerability_detail', route_id=vuln.route_id) }}">{{ vuln.display_id or vuln.vulnerability_id }}</a></td><td>{{ vuln.security_status }}</td><td>{% if vuln.fixed_versions %}<b>{{ vuln.fixed_versions|join(', ') }}</b>{% else %}<span class="muted">None known</span>{% endif %}</td><td class="number-cell">{{ vuln.package_ids|length }}</td></tr>{% endfor %}</table>
-<h3>Vulnerable Packages</h3><table><tr><th>Type</th><th>Name</th><th>Version</th><th>Status</th><th>Fixed Versions</th><th>Vulnerabilities</th></tr>{% for pkg in detail.packages %}<tr><td>{{ pkg.package_type }}</td><td><a href="{{ url_for('web.package_detail', route_id=pkg.route_id) }}">{{ pkg.package_name }}</a></td><td>{{ pkg.package_version }}</td><td>{{ pkg.security_status }}</td><td>{% if pkg.fixed_versions %}<b>{{ pkg.fixed_versions|join(', ') }}</b>{% else %}<span class="muted">None known</span>{% endif %}</td><td class="number-cell">{{ pkg.vulnerability_ids|length }}</td></tr>{% endfor %}</table>
-<p><a class="button" href="{{ url_for('web.download_report', report_type='artifact', artifact_id=artifact.artifact_id) }}">Download artifact report</a></p>
+{% set summary = detail.summary or {} %}{% set artifact = detail.artifact or {} %}
+<section class="page-header split-header">
+  <div>
+    <p class="eyebrow">Artifact detail</p>
+    <h2>{{ artifact.artifact_id or summary.canonical_id or 'Unknown artifact' }}</h2>
+    <p class="muted">Security impact and related packages for this artifact.</p>
+  </div>
+  <a class="button button-secondary" href="{{ url_for('web.download_report', report_type='artifact', target_id=summary.route_id or summary.canonical_id or artifact.artifact_id) }}">Download report</a>
+</section>
+
+<div class="cards compact">
+  <div class="card"><b>Type</b><span>{{ artifact.artifact_type or 'Unknown' }}</span></div>
+  <div class="card"><b>Status</b><span>{{ summary.security_status or 'Unknown' }}</span></div>
+  <div class="card"><b>Packages</b><span>{{ summary.package_count or 0 }}</span></div>
+  <div class="card"><b>Vulnerabilities</b><span>{{ summary.vulnerability_ids|length }}</span></div>
+  <div class="card"><b>Fixable</b><span>{{ summary.fixable_count or 0 }}</span></div>
+</div>
+
+<section class="panel">
+  <div class="panel-header"><h3>Artifact metadata</h3></div>
+  <dl class="detail-list">
+    <div><dt>Canonical ID</dt><dd class="id-cell">{{ summary.canonical_id or artifact.artifact_id or 'Not available' }}</dd></div>
+    <div><dt>Role</dt><dd>{{ artifact.artifact_role or 'Not available' }}</dd></div>
+    <div><dt>Projects</dt><dd>{{ detail.project_ids|join(', ') or 'No project metadata' }}</dd></div>
+  </dl>
+</section>
+
+<section class="panel">
+  <div class="panel-header"><h3>Vulnerabilities</h3><span class="muted">{{ detail.vulnerabilities|length }} records</span></div>
+  {% if detail.vulnerabilities %}
+  <div class="table-wrap"><table class="data-table dense"><thead><tr><th>Severity</th><th>Vulnerability</th><th>Status</th><th>Fixed versions</th></tr></thead><tbody>
+  {% for vuln in detail.vulnerabilities %}
+  <tr><td><span class="badge severity sev-{{ (vuln.highest_severity or vuln.severity)|lower }}">{{ vuln.highest_severity or vuln.severity or 'Unknown' }}</span></td><td class="id-cell"><a href="{{ url_for('web.vulnerability_detail', route_id=vuln.route_id) }}">{{ vuln.display_id or vuln.vulnerability_id }}</a></td><td>{{ vuln.security_status or 'Unknown' }}</td><td>{% if vuln.fixed_versions %}{% for v in vuln.fixed_versions[:4] %}<span class="tag">{{ v }}</span>{% endfor %}{% else %}<span class="muted">Not available</span>{% endif %}</td></tr>
+  {% endfor %}
+  </tbody></table></div>
+  {% else %}<div class="empty-state">No vulnerabilities found for this artifact.</div>{% endif %}
+</section>
+
+<section class="panel">
+  <div class="panel-header"><h3>Packages</h3><span class="muted">{{ detail.packages|length }} records</span></div>
+  {% if detail.packages %}
+  <div class="table-wrap"><table class="data-table dense"><thead><tr><th>Package</th><th>Version</th><th>Type</th><th>Vulnerabilities</th><th>Fixable</th></tr></thead><tbody>
+  {% for pkg in detail.packages %}
+  <tr><td><a href="{{ url_for('web.package_detail', route_id=pkg.route_id) }}">{{ pkg.package_name or pkg.package_id }}</a></td><td class="id-cell">{{ pkg.package_version or 'Not available' }}</td><td>{{ pkg.package_type or 'unknown' }}</td><td class="number-cell">{{ pkg.vulnerability_ids|length }}</td><td class="number-cell">{{ pkg.fixable_count or 0 }}</td></tr>
+  {% endfor %}
+  </tbody></table></div>
+  {% else %}<div class="empty-state">No packages found for this artifact.</div>{% endif %}
+</section>
 {% endblock %}

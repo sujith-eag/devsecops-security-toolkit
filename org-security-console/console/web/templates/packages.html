@@ -1,8 +1,43 @@
 {% extends "layout.html" %}
 {% block content %}
-<section class="page-header"><h2>Packages</h2><p class="muted">Package inventory with security impact from current findings.</p></section>
-<form method="get" class="filters-form"><input name="q" placeholder="Search package name, version, ID" value="{{ search }}"><select name="type"><option value="">All types</option>{% for t in package_types %}<option value="{{ t }}" {% if t == package_type %}selected{% endif %}>{{ t }}</option>{% endfor %}</select><select name="status"><option value="">All security states</option><option value="vulnerable" {% if status == 'vulnerable' %}selected{% endif %}>Vulnerable</option><option value="fixable" {% if status == 'fixable' %}selected{% endif %}>Fixable</option><option value="clean" {% if status == 'clean' %}selected{% endif %}>No known vulnerabilities</option></select><button>Apply</button><a class="button light" href="{{ url_for('web.packages') }}">Clear</a></form>
+<section class="page-header">
+  <p class="eyebrow">Dependency inventory</p>
+  <h2>Packages</h2>
+  <p class="muted">Package inventory with security impact from current findings.</p>
+</section>
+
+<form method="get" class="filter-bar">
+  <input name="q" placeholder="Search package name, version, ID" value="{{ search }}">
+  <select name="type"><option value="">All types</option>{% for t in package_types %}<option value="{{ t }}" {% if t == package_type %}selected{% endif %}>{{ t }}</option>{% endfor %}</select>
+  <select name="status"><option value="">All security states</option><option value="vulnerable" {% if status == 'vulnerable' %}selected{% endif %}>Vulnerable</option><option value="fixable" {% if status == 'fixable' %}selected{% endif %}>Fixable</option><option value="clean" {% if status == 'clean' %}selected{% endif %}>No known vulnerabilities</option></select>
+  <button>Apply</button>
+  <a class="button button-light" href="{{ url_for('web.packages') }}">Clear</a>
+</form>
+
 {% include 'pagination.html' with context %}
-<table><tr><th>Type</th><th>Name</th><th>Version</th><th>Status</th><th>Vulnerabilities</th><th>Artifacts</th><th>Critical/High</th><th>Fixed Versions</th></tr>{% for item in packages['items'] %}<tr><td>{{ item.package_type }}</td><td><a href="{{ url_for('web.package_detail', route_id=item.route_id) }}">{{ item.package_name }}</a></td><td>{{ item.package_version }}</td><td><span class="status-badge status-{{ item.security_status|lower|replace(' ', '-') }}">{{ item.security_status }}</span></td><td class="number-cell">{{ item.vulnerability_ids|length }}</td><td class="number-cell">{{ item.artifact_ids|length }}</td><td class="number-cell">{{ item.critical_high_count }}</td><td>{% if item.fixed_versions %}<b>{{ item.fixed_versions|join(', ') }}</b>{% else %}<span class="muted">None known</span>{% endif %}</td></tr>{% endfor %}</table>
+
+{% if packages['items'] %}
+<div class="table-wrap">
+<table class="data-table dense">
+  <thead><tr><th>Type</th><th>Name</th><th>Version</th><th>Status</th><th>Vulnerabilities</th><th>Artifacts</th><th>Critical/High</th><th>Fixed versions</th></tr></thead>
+  <tbody>
+  {% for item in packages['items'] %}
+  <tr>
+    <td><span class="badge neutral">{{ item.package_type or 'unknown' }}</span></td>
+    <td><a href="{{ url_for('web.package_detail', route_id=item.route_id) }}">{{ item.package_name or item.package_id }}</a></td>
+    <td class="id-cell">{{ item.package_version or 'Not available' }}</td>
+    <td><span class="badge status status-{{ item.security_status|lower|replace(' ', '-') }}">{{ item.security_status or 'Unknown' }}</span></td>
+    <td class="number-cell">{{ item.vulnerability_ids|length }}</td>
+    <td class="number-cell">{{ item.artifact_ids|length }}</td>
+    <td class="number-cell strong-risk">{{ item.critical_high_count }}</td>
+    <td class="wrap-text">{% if item.fixed_versions %}{% for version in item.fixed_versions[:3] %}<span class="tag">{{ version }}</span>{% endfor %}{% if item.fixed_versions|length > 3 %}<span class="muted small">+{{ item.fixed_versions|length - 3 }} more</span>{% endif %}{% else %}<span class="muted">Not available</span>{% endif %}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<div class="empty-state">No packages matched the current filters.</div>
+{% endif %}
 {% include 'pagination.html' with context %}
 {% endblock %}

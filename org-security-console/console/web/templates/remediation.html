@@ -1,8 +1,0 @@
-{% extends "layout.html" %}
-{% block content %}
-<section class="page-header"><h2>Remediation</h2><p class="muted">Fixable action items grouped by vulnerability, package, and fixed version.</p></section>
-<form method="get" class="filters-form"><input name="q" placeholder="Search vulnerability, package, fixed version" value="{{ search }}"><select name="severity"><option value="">All severities</option>{% for sev in ['Critical','High','Medium','Low','Negligible','Unknown'] %}<option value="{{ sev }}" {% if severity == sev %}selected{% endif %}>{{ sev }}</option>{% endfor %}</select><button>Apply</button><a class="button light" href="{{ url_for('web.remediation') }}">Clear</a></form>
-{% include 'pagination.html' with context %}
-<table><tr><th>Severity</th><th>Vulnerability</th><th>Package</th><th>Upgrade To / Fixed Versions</th><th>Artifacts</th><th>Projects</th></tr>{% for item in items['items'] %}<tr><td class="sev-{{ item.highest_severity|lower }}">{{ item.highest_severity }}</td><td><a href="{{ url_for('web.vulnerability_detail', route_id=item.vulnerability_route_id) }}">{{ item.vulnerability_id }}</a></td><td class="wrap-id"><a href="{{ url_for('web.package_detail', route_id=item.package_route_id) }}">{{ item.package_id }}</a></td><td><b>{{ item.fixed_versions|join(', ') }}</b></td><td class="number-cell">{{ item.affected_artifact_count }}</td><td class="number-cell">{{ item.affected_project_count }}</td></tr>{% endfor %}</table>
-{% include 'pagination.html' with context %}
-{% endblock %}

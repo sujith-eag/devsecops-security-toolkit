@@ -1,40 +1,45 @@
 {% extends "layout.html" %}
 {% block content %}
 <section class="page-header">
+  <p class="eyebrow">Exports</p>
   <h2>Reports</h2>
-  <p class="muted">Generate Markdown reports from the current production indexes. Reports can be downloaded or written to the mounted reports folder.</p>
+  <p class="muted">Generate Markdown reports from the currently loaded production indexes.</p>
 </section>
+
 {% if message %}<div class="alert success">{{ message }}</div>{% endif %}
+
 <div class="report-grid">
   <section class="report-card">
     <h3>Organization Security Report</h3>
-    <p>Current organization-wide security posture, severity totals, top remediation actions, high-risk artifacts, and data health.</p>
-    <a class="button" href="{{ url_for('web.download_report', report_type='org') }}">Download</a>
-    <form action="{{ url_for('web.write_report', report_type='org') }}" method="post"><button>Write to /reports</button></form>
+    <p>Organization-wide security posture, severity totals, top remediation actions, high-risk artifacts, and data health.</p>
+    <div class="action-row"><a class="button" href="{{ url_for('web.download_report', report_type='org') }}">Download</a><form action="{{ url_for('web.write_report', report_type='org') }}" method="post"><button>Write to reports</button></form></div>
   </section>
+
   <section class="report-card">
-    <h3>Remediation Report</h3>
+    <h3>Vulnerability Remediation Report</h3>
     <p>Action-focused list of fixable vulnerabilities, affected packages, fixed versions, and impacted artifacts/projects.</p>
-    <a class="button" href="{{ url_for('web.download_report', report_type='remediation') }}">Download</a>
-    <form action="{{ url_for('web.write_report', report_type='remediation') }}" method="post"><button>Write to /reports</button></form>
+    <div class="action-row"><a class="button" href="{{ url_for('web.download_report', report_type='remediation') }}">Download</a><form action="{{ url_for('web.write_report', report_type='remediation') }}" method="post"><button>Write to reports</button></form></div>
   </section>
+
   <section class="report-card">
     <h3>Artifact Report</h3>
-    <p>Security report for one artifact. Use the route ID from the artifact URL, or download directly from an artifact detail page.</p>
-    <form action="{{ url_for('web.download_report', report_type='artifact') }}" method="get"><input name="target_id" placeholder="Artifact route ID or canonical ID"><button>Download</button></form>
-    <form action="{{ url_for('web.write_report', report_type='artifact') }}" method="post"><input name="target_id" placeholder="Artifact route ID or canonical ID"><button>Write</button></form>
+    <p>Security report for a single artifact. Use the route ID from the artifact URL or canonical ID.</p>
+    <form class="inline-form" action="{{ url_for('web.download_report', report_type='artifact') }}" method="get"><input name="target_id" placeholder="Artifact route ID or canonical ID"><button>Download</button></form>
+    <form class="inline-form" action="{{ url_for('web.write_report', report_type='artifact') }}" method="post"><input name="target_id" placeholder="Artifact route ID or canonical ID"><button>Write</button></form>
   </section>
+
   <section class="report-card">
     <h3>Vulnerability Report</h3>
     <p>Impact report for a CVE/GHSA, including affected packages, artifacts, and available fixes.</p>
-    <form action="{{ url_for('web.download_report', report_type='vulnerability') }}" method="get"><input name="target_id" placeholder="Vulnerability route ID or CVE/GHSA ID"><button>Download</button></form>
-    <form action="{{ url_for('web.write_report', report_type='vulnerability') }}" method="post"><input name="target_id" placeholder="Vulnerability route ID or CVE/GHSA ID"><button>Write</button></form>
+    <form class="inline-form" action="{{ url_for('web.download_report', report_type='vulnerability') }}" method="get"><input name="target_id" placeholder="Vulnerability route ID or CVE/GHSA ID"><button>Download</button></form>
+    <form class="inline-form" action="{{ url_for('web.write_report', report_type='vulnerability') }}" method="post"><input name="target_id" placeholder="Vulnerability route ID or CVE/GHSA ID"><button>Write</button></form>
   </section>
+
   <section class="report-card">
     <h3>Package Report</h3>
     <p>Dependency impact report showing where a package is used and which vulnerabilities affect it.</p>
-    <form action="{{ url_for('web.download_report', report_type='package') }}" method="get"><input name="target_id" placeholder="Package route ID or package ID"><button>Download</button></form>
-    <form action="{{ url_for('web.write_report', report_type='package') }}" method="post"><input name="target_id" placeholder="Package route ID or package ID"><button>Write</button></form>
+    <form class="inline-form" action="{{ url_for('web.download_report', report_type='package') }}" method="get"><input name="target_id" placeholder="Package route ID or package ID"><button>Download</button></form>
+    <form class="inline-form" action="{{ url_for('web.write_report', report_type='package') }}" method="post"><input name="target_id" placeholder="Package route ID or package ID"><button>Write</button></form>
   </section>
 </div>
 {% endblock %}

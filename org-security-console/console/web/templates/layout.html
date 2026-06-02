@@ -2,26 +2,34 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ title or "Org Security Console" }}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
   <header class="app-header">
     <div class="header-main">
-      <div>
-        <h1>Org Security Console</h1>
-        <p>Organization security posture, vulnerabilities, packages, and remediation</p>
+      <div class="brand-block">
+        <div class="brand-mark">OSC</div>
+        <div>
+          <h1>Org Security Console</h1>
+          <p>Centralized SCA, vulnerability monitoring, and remediation tracking</p>
+        </div>
       </div>
-      <div class="header-actions"><a href="{{ url_for('web.reload_page') }}">Reload Data</a></div>
+      <div class="header-actions">
+        <a class="button button-secondary" href="{{ url_for('web.reload_page') }}">Reload Data</a>
+      </div>
     </div>
-    <nav class="main-nav">
-      <a href="{{ url_for('web.overview') }}">Overview</a>
-      <a href="{{ url_for('web.vulnerabilities') }}">Vulnerabilities</a>
-      <a href="{{ url_for('web.artifacts') }}">Artifacts</a>
-      <a href="{{ url_for('web.packages') }}">Packages</a>
-      <a href="{{ url_for('web.report_page') }}">Reports</a>
+    <nav class="main-nav" aria-label="Primary navigation">
+      <a class="{% if request.endpoint == 'web.overview' %}active{% endif %}" href="{{ url_for('web.overview') }}">Overview</a>
+      <a class="{% if request.endpoint in ['web.vulnerabilities', 'web.vulnerability_detail'] %}active{% endif %}" href="{{ url_for('web.vulnerabilities') }}">Vulnerability Management</a>
+      <a class="{% if request.endpoint in ['web.artifacts', 'web.artifact_detail'] %}active{% endif %}" href="{{ url_for('web.artifacts') }}">Artifacts</a>
+      <a class="{% if request.endpoint in ['web.packages', 'web.package_detail'] %}active{% endif %}" href="{{ url_for('web.packages') }}">Packages</a>
+      <a class="{% if request.endpoint == 'web.report_page' %}active{% endif %}" href="{{ url_for('web.report_page') }}">Reports</a>
     </nav>
   </header>
-  <main class="page-content">{% block content %}{% endblock %}</main>
+  <main class="page-content">
+    {% block content %}{% endblock %}
+  </main>
 </body>
 </html>

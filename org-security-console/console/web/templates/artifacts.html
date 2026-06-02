@@ -1,8 +1,40 @@
 {% extends "layout.html" %}
 {% block content %}
-<section class="page-header"><h2>Artifacts</h2><p class="muted">Scanned images, source projects, and other artifacts ranked by current risk.</p></section>
-<form method="get" class="filters-form"><input name="q" placeholder="Search artifact ID, type, role" value="{{ search }}"><button>Apply</button><a class="button light" href="{{ url_for('web.artifacts') }}">Clear</a></form>
+<section class="page-header">
+  <p class="eyebrow">Inventory</p>
+  <h2>Artifacts</h2>
+  <p class="muted">Scanned images, source projects, and other artifacts ranked by current security risk.</p>
+</section>
+
+<form method="get" class="filter-bar">
+  <input name="q" placeholder="Search artifact ID, type, role" value="{{ search }}">
+  <button>Apply</button>
+  <a class="button button-light" href="{{ url_for('web.artifacts') }}">Clear</a>
+</form>
+
 {% include 'pagination.html' with context %}
-<table><tr><th>Artifact</th><th>Type</th><th>Status</th><th>Packages</th><th>Vulnerabilities</th><th>Fixable</th><th>Critical/High</th></tr>{% for item in artifacts['items'] %}{% set art = item.artifact %}<tr><td class="wrap-id"><a href="{{ url_for('web.artifact_detail', route_id=item.route_id) }}">{{ art.artifact_id }}</a></td><td>{{ art.artifact_type }}</td><td><span class="status-badge status-{{ item.security_status|lower|replace(' ', '-') }}">{{ item.security_status }}</span></td><td class="number-cell">{{ item.package_count }}</td><td class="number-cell">{{ item.vulnerability_ids|length }}</td><td class="number-cell">{{ item.fixable_count }}</td><td class="number-cell">{{ item.critical_high_count }}</td></tr>{% endfor %}</table>
+
+{% if artifacts['items'] %}
+<div class="table-wrap">
+<table class="data-table dense">
+  <thead><tr><th>Artifact</th><th>Type</th><th>Status</th><th>Packages</th><th>Vulnerabilities</th><th>Fixable</th><th>Critical/High</th></tr></thead>
+  <tbody>
+  {% for item in artifacts['items'] %}{% set art = item.artifact or {} %}
+  <tr>
+    <td class="id-cell"><a href="{{ url_for('web.artifact_detail', route_id=item.route_id) }}">{{ art.artifact_id or item.canonical_id }}</a></td>
+    <td>{{ art.artifact_type or 'Unknown' }}</td>
+    <td><span class="badge status status-{{ item.security_status|lower|replace(' ', '-') }}">{{ item.security_status or 'Unknown' }}</span></td>
+    <td class="number-cell">{{ item.package_count }}</td>
+    <td class="number-cell">{{ item.vulnerability_ids|length }}</td>
+    <td class="number-cell">{{ item.fixable_count }}</td>
+    <td class="number-cell strong-risk">{{ item.critical_high_count }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<div class="empty-state">No artifacts matched the current filters.</div>
+{% endif %}
 {% include 'pagination.html' with context %}
 {% endblock %}

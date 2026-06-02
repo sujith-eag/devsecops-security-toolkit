@@ -1,10 +1,20 @@
 {% extends "layout.html" %}
 {% block content %}
-<h2>Data Health</h2>
-<div class="cards compact"><div class="card"><b>Run Errors</b><span>{{ health.errors|length }}</span></div><div class="card"><b>Reference Warnings</b><span>{{ health.warnings|length }}</span></div><div class="card"><b>Index Warnings</b><span>{{ health.index_validation.warning_count or 0 }}</span></div></div>
-<h3>Index Metadata</h3><pre>{{ health.index_metadata | tojson(indent=2) }}</pre>
-<h3>Index Summary</h3><pre>{{ health.index_summary | tojson(indent=2) }}</pre>
-<h3>Index Validation</h3><pre>{{ health.index_validation | tojson(indent=2) }}</pre>
-<h3>Run Errors</h3><pre>{{ health.errors | tojson(indent=2) }}</pre>
-<h3>Reference Warnings</h3><pre>{{ health.warnings | tojson(indent=2) }}</pre>
+<section class="page-header">
+  <p class="eyebrow">Diagnostics</p>
+  <h2>Data Health</h2>
+  <p class="muted">Raw diagnostic view for loaded run and index metadata.</p>
+</section>
+
+<div class="cards compact">
+  <div class="card"><b>Run Errors</b><span>{{ health.errors|length }}</span></div>
+  <div class="card"><b>Reference Warnings</b><span>{{ health.warnings|length }}</span></div>
+  <div class="card"><b>Index Warnings</b><span>{{ health.index_validation.warning_count or 0 }}</span></div>
+</div>
+
+<section class="panel"><h3>Index Metadata</h3><pre>{{ health.index_metadata | tojson(indent=2) }}</pre></section>
+<section class="panel"><h3>Index Summary</h3><pre>{{ health.index_summary | tojson(indent=2) }}</pre></section>
+<section class="panel"><h3>Index Validation</h3><pre>{{ health.index_validation | tojson(indent=2) }}</pre></section>
+<section class="panel"><h3>Run Errors</h3><pre>{{ health.errors | tojson(indent=2) }}</pre></section>
+<section class="panel"><h3>Reference Warnings</h3><pre>{{ health.warnings | tojson(indent=2) }}</pre></section>
 {% endblock %}

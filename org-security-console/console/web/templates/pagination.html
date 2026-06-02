@@ -1,8 +1,10 @@
 {% if page.total > 0 %}
 <div class="pagination">
-  <span>Showing {{ page.start }}–{{ page.end }} of {{ page.total }} records</span>
-  {% if page.has_prev %}<a href="{{ url_for(request.endpoint, **page.prev_args) }}">Previous</a>{% endif %}
-  <span>Page {{ page.page }} of {{ page.total_pages }}</span>
-  {% if page.has_next %}<a href="{{ url_for(request.endpoint, **page.next_args) }}">Next</a>{% endif %}
+  <div class="pagination-summary">Showing <b>{{ page.start }}</b>–<b>{{ page.end }}</b> of <b>{{ page.total }}</b></div>
+  <div class="pagination-controls">
+    {% if page.has_prev %}<a href="{{ url_for(request.endpoint, **page.prev_args) }}">Previous</a>{% endif %}
+    <span>Page {{ page.page }} of {{ page.total_pages }}</span>
+    {% if page.has_next %}<a href="{{ url_for(request.endpoint, **page.next_args) }}">Next</a>{% endif %}
+  </div>
 </div>
 {% endif %}

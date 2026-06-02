@@ -1,31 +1,76 @@
 {% extends "layout.html" %}
 {% block content %}
-<section class="page-header">
-  <h2>Security Overview</h2>
-  <p class="muted">Last updated: <b>{{ overview.last_updated }}</b></p>
+<section class="page-header split-header">
+  <div>
+    <p class="eyebrow">Security posture</p>
+    <h2>Overview</h2>
+    <p class="muted">Current organization-wide SCA and vulnerability posture from the loaded production indexes.</p>
+  </div>
+  <div class="meta-card">
+    <span>Last updated</span>
+    <b>{{ overview.last_updated or 'Not available' }}</b>
+  </div>
 </section>
 
-<div class="cards">
-  <a class="card" href="{{ url_for('web.artifacts') }}"><b>Artifacts</b><span>{{ overview.artifact_count }}</span></a>
-  <a class="card" href="{{ url_for('web.packages') }}"><b>Packages</b><span>{{ overview.package_count }}</span></a>
-  <a class="card" href="{{ url_for('web.vulnerabilities') }}"><b>Vulnerabilities</b><span>{{ overview.vulnerability_count }}</span></a>
-  <div class="card"><b>Total Findings</b><span>{{ overview.finding_count }}</span></div>
-  <a class="card" href="{{ url_for('web.vulnerabilities', fix='fixable') }}"><b>Fixable Findings</b><span>{{ overview.fixable_count }}</span></a>
-  <a class="card" href="{{ url_for('web.vulnerabilities', fix='not-fixable') }}"><b>Non-Fixable Findings</b><span>{{ overview.not_fixable_count }}</span></a>
-  <a class="card" href="{{ url_for('web.remediation') }}"><b>Remediation Actions</b><span>{{ overview.remediation_action_count }}</span></a>
-  <a class="card danger" href="{{ url_for('web.vulnerabilities', severity='Critical') }}"><b>Critical</b><span>{{ overview.critical_count }}</span></a>
-  <a class="card warn" href="{{ url_for('web.vulnerabilities', severity='High') }}"><b>High</b><span>{{ overview.high_count }}</span></a>
-</div>
-<h3>Severity Summary</h3>
-<table><tr><th>Severity</th><th>Findings</th></tr>{% for sev, count in overview.severity_totals.items() %}<tr><td><a href="{{ url_for('web.vulnerabilities', severity=sev) }}">{{ sev }}</a></td><td class="number-cell">{{ count }}</td></tr>{% endfor %}</table>
+<section class="metric-grid metric-grid-primary">
+  <a class="metric-card risk-critical" href="{{ url_for('web.vulnerabilities', severity='Critical') }}">
+    <span>Critical</span><b>{{ overview.critical_count }}</b><small>highest severity findings</small>
+  </a>
+  <a class="metric-card risk-high" href="{{ url_for('web.vulnerabilities', severity='High') }}">
+    <span>High</span><b>{{ overview.high_count }}</b><small>high severity findings</small>
+  </a>
+  <a class="metric-card" href="{{ url_for('web.vulnerabilities', fix='fixable') }}">
+    <span>Fixable findings</span><b>{{ overview.fixable_count }}</b><small>available remediation paths</small>
+  </a>
+  <div class="metric-card">
+    <span>Total findings</span><b>{{ overview.finding_count }}</b><small>across known artifacts</small>
+  </div>
+</section>
 
-{% if overview.error_count or overview.warning_count %}
-<div class="alert warning">Data health has {{ overview.error_count }} errors and {{ overview.warning_count }} warnings. <a href="{{ url_for('web.data_health') }}">Review data health</a>.</div>
-{% endif %}
+<section class="content-grid two-col">
+  <div class="panel">
+    <div class="panel-header"><h3>Inventory</h3><span class="muted">Scanned scope</span></div>
+    <div class="cards compact">
+      <a class="card" href="{{ url_for('web.artifacts') }}"><b>Artifacts</b><span>{{ overview.artifact_count }}</span></a>
+      <a class="card" href="{{ url_for('web.packages') }}"><b>Packages</b><span>{{ overview.package_count }}</span></a>
+      <a class="card" href="{{ url_for('web.vulnerabilities') }}"><b>Vulnerabilities</b><span>{{ overview.vulnerability_count }}</span></a>
+      <a class="card" href="{{ url_for('web.vulnerabilities', fix='not-fixable') }}"><b>Non-fixable findings</b><span>{{ overview.not_fixable_count }}</span></a>
+    </div>
+  </div>
 
-<div class="action-row">
-  <a class="button" href="{{ url_for('web.remediation') }}">Open remediation queue</a>
-  <a class="button" href="{{ url_for('web.vulnerabilities', severity='Critical') }}">View critical vulnerabilities</a>
-  <a class="button" href="{{ url_for('web.data_health') }}">Check data health</a>
-</div>
+  <div class="panel">
+    <div class="panel-header"><h3>Severity distribution</h3><span class="muted">Finding totals</span></div>
+    <div class="severity-list">
+      {% for sev in ['Critical','High','Medium','Low','Negligible','Unknown'] %}
+      <a href="{{ url_for('web.vulnerabilities', severity=sev) }}" class="severity-row">
+        <span class="severity-dot sev-bg-{{ sev|lower }}"></span>
+        <span>{{ sev }}</span>
+        <b>{{ overview.severity_totals.get(sev, 0) }}</b>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="content-grid two-col">
+  <div class="panel">
+    <div class="panel-header"><h3>Operational shortcuts</h3><span class="muted">Common workflows</span></div>
+    <div class="action-list">
+      <a href="{{ url_for('web.vulnerabilities', fix='fixable') }}">Review fixable vulnerabilities</a>
+      <a href="{{ url_for('web.vulnerabilities', severity='Critical') }}">Review critical exposure</a>
+      <a href="{{ url_for('web.packages', status='vulnerable') }}">Inspect vulnerable packages</a>
+      <a href="{{ url_for('web.report_page') }}">Generate reports</a>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header"><h3>Index health</h3><span class="muted">Loaded data metadata</span></div>
+    <dl class="detail-list">
+      <div><dt>Run errors</dt><dd>{{ overview.error_count }}</dd></div>
+      <div><dt>Warnings</dt><dd>{{ overview.warning_count }}</dd></div>
+      <div><dt>Index version</dt><dd>{{ overview.index_version or 'Not available' }}</dd></div>
+      <div><dt>Schema version</dt><dd>{{ overview.schema_version or 'Not available' }}</dd></div>
+    </dl>
+  </div>
+</section>
 {% endblock %}
