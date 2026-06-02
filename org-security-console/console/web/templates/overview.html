@@ -14,16 +14,16 @@
 
 <section class="metric-grid metric-grid-primary">
   <a class="metric-card risk-critical" href="{{ url_for('web.vulnerabilities', severity='Critical') }}">
-    <span>Critical</span><b>{{ overview.critical_count }}</b><small>highest severity findings</small>
+    <span>Critical</span><b>{{ overview.critical_count }}</b>
   </a>
   <a class="metric-card risk-high" href="{{ url_for('web.vulnerabilities', severity='High') }}">
-    <span>High</span><b>{{ overview.high_count }}</b><small>high severity findings</small>
+    <span>High</span><b>{{ overview.high_count }}</b>
   </a>
   <a class="metric-card" href="{{ url_for('web.vulnerabilities', fix='fixable') }}">
-    <span>Fixable findings</span><b>{{ overview.fixable_count }}</b><small>available remediation paths</small>
+    <span>Fixable findings</span><b>{{ overview.fixable_count }}</b>
   </a>
   <div class="metric-card">
-    <span>Total findings</span><b>{{ overview.finding_count }}</b><small>across known artifacts</small>
+    <span>Total findings</span><b>{{ overview.finding_count }}</b>
   </div>
 </section>
 
@@ -49,28 +49,6 @@
       </a>
       {% endfor %}
     </div>
-  </div>
-</section>
-
-<section class="content-grid two-col">
-  <div class="panel">
-    <div class="panel-header"><h3>Operational shortcuts</h3><span class="muted">Common workflows</span></div>
-    <div class="action-list">
-      <a href="{{ url_for('web.vulnerabilities', fix='fixable') }}">Review fixable vulnerabilities</a>
-      <a href="{{ url_for('web.vulnerabilities', severity='Critical') }}">Review critical exposure</a>
-      <a href="{{ url_for('web.packages', status='vulnerable') }}">Inspect vulnerable packages</a>
-      <a href="{{ url_for('web.report_page') }}">Generate reports</a>
-    </div>
-  </div>
-
-  <div class="panel">
-    <div class="panel-header"><h3>Index health</h3><span class="muted">Loaded data metadata</span></div>
-    <dl class="detail-list">
-      <div><dt>Run errors</dt><dd>{{ overview.error_count }}</dd></div>
-      <div><dt>Warnings</dt><dd>{{ overview.warning_count }}</dd></div>
-      <div><dt>Index version</dt><dd>{{ overview.index_version or 'Not available' }}</dd></div>
-      <div><dt>Schema version</dt><dd>{{ overview.schema_version or 'Not available' }}</dd></div>
-    </dl>
   </div>
 </section>
 {% endblock %}

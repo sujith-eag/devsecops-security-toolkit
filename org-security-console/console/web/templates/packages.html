@@ -18,19 +18,56 @@
 
 {% if packages['items'] %}
 <div class="table-wrap">
-<table class="data-table dense">
-  <thead><tr><th>Type</th><th>Name</th><th>Version</th><th>Status</th><th>Vulnerabilities</th><th>Artifacts</th><th>Critical/High</th><th>Fixed versions</th></tr></thead>
+<table class="data-table dense package-table">
+  <colgroup>
+    <col class="pkg-col-type">
+    <col class="pkg-col-name">
+    <col class="pkg-col-version">
+    <col class="pkg-col-fixed">
+    <col class="pkg-col-number">
+    <col class="pkg-col-number">
+    <col class="pkg-col-number">
+  </colgroup>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Name</th>
+      <th>Version</th>
+      <th>Fixed versions</th>
+      <th class="number-cell">Vuln</th>
+      <th class="number-cell">Critical/High</th>
+      <th class="number-cell">Artifacts</th>
+    </tr>
+  </thead>
+
   <tbody>
   {% for item in packages['items'] %}
+  {% set vuln_count = item.vulnerability_ids|length %}
   <tr>
-    <td><span class="badge neutral">{{ item.package_type or 'unknown' }}</span></td>
-    <td><a href="{{ url_for('web.package_detail', route_id=item.route_id) }}">{{ item.package_name or item.package_id }}</a></td>
-    <td class="id-cell">{{ item.package_version or 'Not available' }}</td>
-    <td><span class="badge status status-{{ item.security_status|lower|replace(' ', '-') }}">{{ item.security_status or 'Unknown' }}</span></td>
-    <td class="number-cell">{{ item.vulnerability_ids|length }}</td>
+
+    <td><span class="badge neutral">{{ item.package_type or 'unknown' }}</span></td>    
+    <td class="package-name-cell">
+      <a class="truncate-line" title="{{ item.package_name or item.package_id }}" href="{{ url_for('web.package_detail', route_id=item.route_id) }}">
+        {{ item.package_name or item.package_id }}
+      </a>
+    </td>
+
+    <td class="id-cell truncate-line" title="{{ item.package_version or 'Not available' }}">
+      {{ item.package_version or 'Not available' }}
+    </td>
+    
+    <td class="wrap-text">
+      {% if vuln_count == 0 and (item.finding_count or 0) == 0 %}
+        <span class="badge status status-no-known-vulnerabilities">No known vulnerabilities</span>
+      {% elif item.fixed_versions %}
+        {% for version in item.fixed_versions[:4] %}<span class="tag">{{ version }}</span>{% endfor %}{% if item.fixed_versions|length > 4 %}<span class="muted small">+{{ item.fixed_versions|length - 4 }} more</span>{% endif %}
+      {% else %}
+        <span class="muted">Not available</span>
+      {% endif %}
+    </td>
+    <td class="number-cell">{{ vuln_count }}</td>
+    <td class="number-cell strong-risk">{{ item.critical_high_count or 0 }}</td>  
     <td class="number-cell">{{ item.artifact_ids|length }}</td>
-    <td class="number-cell strong-risk">{{ item.critical_high_count }}</td>
-    <td class="wrap-text">{% if item.fixed_versions %}{% for version in item.fixed_versions[:3] %}<span class="tag">{{ version }}</span>{% endfor %}{% if item.fixed_versions|length > 3 %}<span class="muted small">+{{ item.fixed_versions|length - 3 }} more</span>{% endif %}{% else %}<span class="muted">Not available</span>{% endif %}</td>
   </tr>
   {% endfor %}
   </tbody>

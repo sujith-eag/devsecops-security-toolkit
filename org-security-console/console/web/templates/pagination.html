@@ -1,10 +1,50 @@
 {% if page.total > 0 %}
+{% macro page_link(page_number, label=None) %}
+  {% set args = request.args.to_dict(flat=True) %}
+  {% set _ = args.update({'page': page_number, 'per_page': page.per_page}) %}
+  <a class="page-button page-number" href="{{ url_for(request.endpoint, **args) }}">{{ label or page_number }}</a>
+{% endmacro %}
+
+{% set current = page.page %}
+{% set total_pages = page.total_pages %}
+{% set start_page = current - 2 if current - 2 > 1 else 1 %}
+{% set end_page = current + 2 if current + 2 < total_pages else total_pages %}
+
 <div class="pagination">
-  <div class="pagination-summary">Showing <b>{{ page.start }}</b>–<b>{{ page.end }}</b> of <b>{{ page.total }}</b></div>
+  <div class="pagination-summary">
+    Showing <b>{{ page.start }}</b>–<b>{{ page.end }}</b> of <b>{{ page.total }}</b>
+  </div>
+
   <div class="pagination-controls">
-    {% if page.has_prev %}<a href="{{ url_for(request.endpoint, **page.prev_args) }}">Previous</a>{% endif %}
-    <span>Page {{ page.page }} of {{ page.total_pages }}</span>
-    {% if page.has_next %}<a href="{{ url_for(request.endpoint, **page.next_args) }}">Next</a>{% endif %}
+    {% if page.has_prev %}
+      {{ page_link(page.prev_page, 'Previous') }}
+    {% else %}
+      <span class="page-button disabled">Previous</span>
+    {% endif %}
+
+    {% if start_page > 1 %}
+      {{ page_link(1) }}
+      {% if start_page > 2 %}<span class="page-ellipsis">…</span>{% endif %}
+    {% endif %}
+
+    {% for p in range(start_page, end_page + 1) %}
+      {% if p == current %}
+        <span class="page-button current">{{ p }}</span>
+      {% else %}
+        {{ page_link(p) }}
+      {% endif %}
+    {% endfor %}
+
+    {% if end_page < total_pages %}
+      {% if end_page < total_pages - 1 %}<span class="page-ellipsis">…</span>{% endif %}
+      {{ page_link(total_pages) }}
+    {% endif %}
+
+    {% if page.has_next %}
+      {{ page_link(page.next_page, 'Next') }}
+    {% else %}
+      <span class="page-button disabled">Next</span>
+    {% endif %}
   </div>
 </div>
 {% endif %}

@@ -23,13 +23,19 @@
     <nav class="main-nav" aria-label="Primary navigation">
       <a class="{% if request.endpoint == 'web.overview' %}active{% endif %}" href="{{ url_for('web.overview') }}">Overview</a>
       <a class="{% if request.endpoint in ['web.vulnerabilities', 'web.vulnerability_detail'] %}active{% endif %}" href="{{ url_for('web.vulnerabilities') }}">Vulnerability Management</a>
-      <a class="{% if request.endpoint in ['web.artifacts', 'web.artifact_detail'] %}active{% endif %}" href="{{ url_for('web.artifacts') }}">Artifacts</a>
       <a class="{% if request.endpoint in ['web.packages', 'web.package_detail'] %}active{% endif %}" href="{{ url_for('web.packages') }}">Packages</a>
+      <a class="{% if request.endpoint in ['web.artifacts', 'web.artifact_detail'] %}active{% endif %}" href="{{ url_for('web.artifacts') }}">Artifacts</a>
       <a class="{% if request.endpoint == 'web.report_page' %}active{% endif %}" href="{{ url_for('web.report_page') }}">Reports</a>
     </nav>
   </header>
   <main class="page-content">
     {% block content %}{% endblock %}
   </main>
+  <footer class="app-footer">
+    <span>Org Security Console</span>
+    <a href="{{ url_for('web.data_health') }}">Data Health</a>
+    <a href="{{ url_for('web.health') }}">Health Check</a>
+    <a href="{{ url_for('web.reload_page') }}">Reload Data</a>
+  </footer>
 </body>
 </html>

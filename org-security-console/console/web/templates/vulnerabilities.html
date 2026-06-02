@@ -1,15 +1,12 @@
 {% extends "layout.html" %}
 {% block content %}
-<section class="page-header split-header">
-  <div>
-    <p class="eyebrow">Triage workspace</p>
-    <h2>Vulnerability Management</h2>
-    <p class="muted">Prioritized vulnerability and package impact view for fix planning and monitoring.</p>
-  </div>
+<section class="page-header">
+  <p class="eyebrow">Triage workspace</p>
+  <h2>Vulnerability Management</h2>
 </section>
 
-<div class="metric-grid">
-  <div class="metric-card"><span>Total vulnerabilities</span><b>{{ summary.total }}</b></div>
+<div class="metric-grid compact-metrics">
+  <div class="metric-card"><span>Total</span><b>{{ summary.total }}</b></div>
   <a class="metric-card" href="{{ url_for('web.vulnerabilities', fix='fixable', severity=severity, q=search, type=package_type) }}"><span>Fixable</span><b>{{ summary.fixable }}</b></a>
   <div class="metric-card"><span>Mixed</span><b>{{ summary.mixed }}</b></div>
   <a class="metric-card" href="{{ url_for('web.vulnerabilities', fix='not-fixable', severity=severity, q=search, type=package_type) }}"><span>Not fixable</span><b>{{ summary.not_fixable }}</b></a>
@@ -38,8 +35,16 @@
 
 {% if rows %}
 <div class="table-wrap">
-<table class="data-table dense">
-  <thead><tr><th>Severity</th><th>Vulnerability</th><th>Package</th><th>Fix state</th><th>Fixed versions</th><th>Artifacts</th><th>Description</th></tr></thead>
+<table class="data-table dense vulnerability-table">
+  <colgroup>
+    <col class="col-severity">
+    <col class="col-vulnerability">
+    <col class="col-package">
+    <col class="col-fixed">
+    <col class="col-description">
+    <col class="col-number">
+  </colgroup>
+  <thead><tr><th>Severity</th><th>Vulnerability</th><th>Package</th><th>Fixed versions</th><th>Description</th><th class="number-cell">Artifacts</th></tr></thead>
   <tbody>
   {% for row in rows %}
   <tr>
@@ -47,12 +52,11 @@
     <td class="id-cell"><a href="{{ url_for('web.vulnerability_detail', route_id=row.vulnerability_route_id) }}">{{ row.vulnerability_display_id }}</a></td>
     <td>
       <a href="{{ url_for('web.package_detail', route_id=row.package_route_id) }}">{{ row.package_name or row.package_id }}</a>
-      <div class="muted small">{{ row.package_version or 'Version unavailable' }} · {{ row.package_type or 'unknown' }}</div>
+      <div class="muted small truncate-line">{{ row.package_version or 'Version unavailable' }} · {{ row.package_type or 'unknown' }}</div>
     </td>
-    <td>{% if row.fixable %}<span class="badge status status-fixable">Fixable</span>{% else %}<span class="badge status status-not-fixable">Not fixable</span>{% endif %}</td>
     <td class="wrap-text">{% if row.fixed_versions %}{% for version in row.fixed_versions[:4] %}<span class="tag">{{ version }}</span>{% endfor %}{% if row.fixed_versions|length > 4 %}<span class="muted small">+{{ row.fixed_versions|length - 4 }} more</span>{% endif %}{% else %}<span class="muted">Not available</span>{% endif %}</td>
+    <td class="description-cell"><div class="clamp-2">{{ row.description or 'No description available' }}</div></td>
     <td class="number-cell">{{ row.affected_artifact_count }}</td>
-    <td class="description-cell">{{ row.description or 'No description available' }}</td>
   </tr>
   {% endfor %}
   </tbody>
