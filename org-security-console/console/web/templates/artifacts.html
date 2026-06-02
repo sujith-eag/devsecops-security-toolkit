@@ -16,8 +16,28 @@
 
 {% if artifacts['items'] %}
 <div class="table-wrap">
-<table class="data-table dense">
-  <thead><tr><th>Artifact</th><th>Type</th><th>Status</th><th>Packages</th><th>Vulnerabilities</th><th>Fixable</th><th>Critical/High</th></tr></thead>
+<table class="data-table dense artifact-table">
+  <colgroup>
+    <col class="artifact-col-name">
+    <col class="artifact-col-type">
+    <col class="artifact-col-status">
+    <col class="artifact-col-number">
+    <col class="artifact-col-number">
+    <col class="artifact-col-number">
+    <col class="artifact-col-number">
+  </colgroup>
+  <thead>
+    <tr>
+      <th>Artifact</th>
+      <th>Type</th>
+      <th>Status</th>
+      <th class="number-cell">Packages</th>
+      <th class="number-cell">Vulnerabilities</th>
+      <th class="number-cell">Fixable</th>
+      <th class="number-cell">Critical/High</th>
+    </tr>
+  </thead>
+
   <tbody>
   {% for item in artifacts['items'] %}{% set art = item.artifact or {} %}
   <tr>
