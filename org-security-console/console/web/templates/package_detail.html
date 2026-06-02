@@ -50,7 +50,7 @@
         <col class="detail-col-severity">
         <col class="detail-col-vulnerability">
         <col class="detail-col-status">
-        <col class="detail-col-number">
+        <col class="detail-col-fixed">
         <col class="detail-col-number">
       </colgroup>
       <thead>
@@ -58,8 +58,8 @@
           <th>Severity</th>
           <th>Vulnerability</th>
           <th>Status</th>
+          <th>Fixed versions</th>
           <th class="number-cell">Artifacts</th>
-          <th class="number-cell">Fixable</th>
         </tr>
       </thead>
       <tbody>
@@ -80,8 +80,15 @@
               {{ vuln.security_status or 'Unknown' }}
             </span>
           </td>
+          <td class="wrap-text">
+            {% if vuln.fixed_versions %}
+              {% for version in vuln.fixed_versions[:4] %}<span class="tag">{{ version }}</span>{% endfor %}
+              {% if vuln.fixed_versions|length > 4 %}<span class="muted small">+{{ vuln.fixed_versions|length - 4 }} more</span>{% endif %}
+            {% else %}
+              <span class="muted">Not available</span>
+            {% endif %}
+          </td>
           <td class="number-cell">{{ vuln.artifact_ids|length }}</td>
-          <td class="number-cell">{{ vuln.fixable_count or 0 }}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -122,7 +129,7 @@
         {% set artifact = art.artifact or {} %}
         <tr>
           <td class="id-cell">
-            <a href="{{ url_for('web.artifact_detail', route_id=art.route_id) }}">
+            <a class="truncate-line" title="{{ artifact.artifact_id or art.canonical_id }}" href="{{ url_for('web.artifact_detail', route_id=art.route_id) }}">
               {{ artifact.artifact_id or art.canonical_id }}
             </a>
           </td>
