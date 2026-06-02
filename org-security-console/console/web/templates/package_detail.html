@@ -2,23 +2,64 @@
 {% block content %}
 {% set idx = detail.index or {} %}
 {% set ent = detail.entity or {} %}
+{% set vuln_count = idx.vulnerability_ids|length %}
+{% set finding_count = idx.finding_count or 0 %}
 
 <section class="page-header split-header">
   <div>
     <p class="eyebrow">Package detail</p>
     <h2>{{ idx.package_name or ent.package_name or 'Unknown package' }}</h2>
-    <p class="muted">Dependency impact, affected artifacts, and vulnerability status.</p>
+    <p class="page-description">
+      {{ idx.package_type or ent.package_type or 'unknown' }} package · version {{ idx.package_version or ent.package_version or 'Not available' }}
+    </p>
   </div>
   <a class="button button-secondary" href="{{ url_for('web.download_report', report_type='package', target_id=idx.route_id or idx.canonical_id or idx.package_id) }}">Download report</a>
 </section>
 
 <div class="detail-metrics">
-  <div class="card"><b>Type</b><span>{{ idx.package_type or ent.package_type or 'unknown' }}</span></div>
-  <div class="card"><b>Version</b><span>{{ idx.package_version or ent.package_version or 'Not available' }}</span></div>
-  <div class="card"><b>Status</b><span>{{ idx.security_status or 'Unknown' }}</span></div>
-  <div class="card"><b>Vulnerabilities</b><span>{{ idx.vulnerability_ids|length }}</span></div>
-  <div class="card"><b>Artifacts</b><span>{{ idx.artifact_ids|length }}</span></div>
+  <div class="card">
+    <b>Type</b>
+    <span>{{ idx.package_type or ent.package_type or 'unknown' }}</span>
+  </div>
+  <div class="card">
+    <b>Version</b>
+    <span>{{ idx.package_version or ent.package_version or 'Not available' }}</span>
+  </div>
+  <div class="card">
+    <b>Vulnerabilities</b>
+    <span>{{ vuln_count }}</span>
+  </div>
+  <div class="card">
+    <b>Artifacts</b>
+    <span>{{ idx.artifact_ids|length }}</span>
+  </div>
+  <div class="card">
+    <b>Critical/High</b>
+    <span>{{ idx.critical_high_count or 0 }}</span>
+  </div>
 </div>
+
+<section class="panel">
+  <div class="panel-header">
+    <h3>Remediation</h3>
+  </div>
+
+  <dl class="detail-list compact-detail-list">
+    <div>
+      <dt>Fixed versions</dt>
+      <dd>
+        {% if vuln_count == 0 and finding_count == 0 %}
+          <span class="badge status status-no-known-vulnerabilities">No known vulnerabilities</span>
+        {% elif idx.fixed_versions %}
+          {% for version in idx.fixed_versions[:6] %}<span class="tag">{{ version }}</span>{% endfor %}
+          {% if idx.fixed_versions|length > 6 %}<span class="muted small">+{{ idx.fixed_versions|length - 6 }} more</span>{% endif %}
+        {% else %}
+          <span class="muted">Not available</span>
+        {% endif %}
+      </dd>
+    </div>
+  </dl>
+</section>
 
 <section class="panel">
   <div class="panel-header">
@@ -27,9 +68,17 @@
 
   <dl class="detail-list">
     <div>
-      <dt>Canonical ID</dt>
-      <dd class="id-cell">{{ idx.canonical_id or idx.package_id or 'Not available' }}</dd>
+      <dt>Package ID</dt>
+      <dd class="id-cell">{{ idx.package_id or ent.package_id or 'Not available' }}</dd>
     </div>
+
+    {% if idx.canonical_id and idx.canonical_id != idx.package_id %}
+    <div>
+      <dt>Canonical ID</dt>
+      <dd class="id-cell">{{ idx.canonical_id }}</dd>
+    </div>
+    {% endif %}
+
     <div>
       <dt>Licenses</dt>
       <dd>{{ (idx.licenses or ent.licenses or [])|join(', ') or 'Not available' }}</dd>
@@ -39,7 +88,7 @@
 
 <section class="panel">
   <div class="panel-header">
-    <h3>Vulnerabilities</h3>
+    <h3>Vulnerabilities affecting this package</h3>
     <span class="muted">{{ detail.vulnerabilities|length }} records</span>
   </div>
 
@@ -49,21 +98,24 @@
       <colgroup>
         <col class="detail-col-severity">
         <col class="detail-col-vulnerability">
-        <col class="detail-col-status">
+        <col class="detail-col-cvss">
         <col class="detail-col-fixed">
+        <col class="detail-col-status">
         <col class="detail-col-number">
       </colgroup>
       <thead>
         <tr>
           <th>Severity</th>
           <th>Vulnerability</th>
-          <th>Status</th>
+          <th class="number-cell">CVSS</th>
           <th>Fixed versions</th>
+          <th>Status</th>
           <th class="number-cell">Artifacts</th>
         </tr>
       </thead>
       <tbody>
         {% for vuln in detail.vulnerabilities %}
+        {% set cvss = vuln.cvss_summary or {} %}
         <tr>
           <td>
             <span class="badge severity sev-{{ (vuln.highest_severity or vuln.severity)|lower }}">
@@ -75,11 +127,7 @@
               {{ vuln.display_id or vuln.vulnerability_id }}
             </a>
           </td>
-          <td>
-            <span class="badge status status-{{ (vuln.security_status or 'unknown')|lower|replace(' ', '-') }}">
-              {{ vuln.security_status or 'Unknown' }}
-            </span>
-          </td>
+          <td class="number-cell">{{ cvss.base_score if cvss.base_score is not none else 'N/A' }}</td>
           <td class="wrap-text">
             {% if vuln.fixed_versions %}
               {% for version in vuln.fixed_versions[:4] %}<span class="tag">{{ version }}</span>{% endfor %}
@@ -87,6 +135,11 @@
             {% else %}
               <span class="muted">Not available</span>
             {% endif %}
+          </td>
+          <td>
+            <span class="badge status status-{{ (vuln.security_status or 'unknown')|lower|replace(' ', '-') }}">
+              {{ vuln.security_status or 'Unknown' }}
+            </span>
           </td>
           <td class="number-cell">{{ vuln.artifact_ids|length }}</td>
         </tr>
@@ -101,7 +154,7 @@
 
 <section class="panel">
   <div class="panel-header">
-    <h3>Affected artifacts</h3>
+    <h3>Artifacts using this package</h3>
     <span class="muted">{{ detail.artifacts|length }} records</span>
   </div>
 
