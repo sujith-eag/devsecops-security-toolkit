@@ -1,48 +1,99 @@
 @page {
   size: A4;
-  margin: 16mm 12mm;
+  margin: 18mm 12mm 17mm 12mm;
+  @top-left {
+    content: string(artifact-name);
+    font-size: 8px;
+    color: #627d98;
+  }
+  @top-right {
+    content: "Scan: " string(scan-time);
+    font-size: 8px;
+    color: #627d98;
+  }
+  @bottom-left {
+    content: "DevSecOps Security Toolkit";
+    font-size: 8px;
+    color: #627d98;
+  }
+  @bottom-right {
+    content: "Page " counter(page) " of " counter(pages);
+    font-size: 8px;
+    color: #627d98;
+  }
+}
+
+@page:first {
+  margin: 18mm 16mm;
+  @top-left { content: none; }
+  @top-right { content: none; }
+  @bottom-left { content: none; }
+  @bottom-right { content: none; }
 }
 
 * { box-sizing: border-box; }
 body {
   font-family: "Liberation Sans", Arial, sans-serif;
   color: #1f2933;
-  font-size: 10px;
+  font-size: 9.5px;
   line-height: 1.35;
 }
 
 h1, h2, h3 { margin: 0; color: #102a43; }
-h1 { font-size: 24px; }
+h1 { font-size: 28px; }
 h2 { font-size: 15px; margin-bottom: 8px; border-bottom: 1px solid #d9e2ec; padding-bottom: 4px; }
 h3 { font-size: 12px; }
 
-.report-header {
-  border-bottom: 3px solid #243b53;
-  padding-bottom: 12px;
-  margin-bottom: 14px;
-}
-.brand-row {
+.cover-page {
+  height: 250mm;
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 12px;
+  justify-content: center;
+  text-align: center;
+  page-break-after: always;
 }
-.logo { max-width: 110px; max-height: 52px; object-fit: contain; }
-.subtitle { margin: 4px 0 0; color: #52606d; font-size: 11px; }
-
-.meta-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+.cover-content {
+  width: 100%;
+  max-width: 165mm;
+  margin: 0 auto;
 }
-.meta-grid div, .card {
-  background: #f5f7fa;
-  border: 1px solid #d9e2ec;
-  border-radius: 6px;
+.cover-logo {
+  display: block;
+  max-width: 380px;
+  max-height: 190px;
+  object-fit: contain;
+  margin: 0 auto 28px auto;
+}
+.cover-content h1 { margin-bottom: 8px; }
+.cover-subtitle { color: #52606d; font-size: 13px; margin: 0 0 28px 0; }
+.cover-table {
+  width: 100%;
+  max-width: 150mm;
+  margin: 0 auto;
+  border-collapse: collapse;
+  text-align: left;
+}
+.cover-table th {
+  width: 42mm;
+  background: #f0f4f8;
+  color: #243b53;
+  text-align: left;
   padding: 8px;
+  border: 1px solid #bcccdc;
 }
-.meta-grid span, .card span { display: block; color: #627d98; font-size: 8px; text-transform: uppercase; letter-spacing: .04em; }
-.meta-grid strong, .card strong { display: block; margin-top: 3px; font-size: 12px; word-break: break-word; }
+.cover-table td {
+  padding: 8px;
+  border: 1px solid #bcccdc;
+  font-size: 11px;
+}
+
+.section[data-artifact] {
+  string-set: artifact-name attr(data-artifact), scan-time attr(data-scan-time);
+}
+.section { margin-top: 14px; }
+.section-note { color: #52606d; margin: 0 0 8px; }
+.two-column { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.page-break-before { page-break-before: always; }
 
 .cards {
   display: grid;
@@ -50,13 +101,16 @@ h3 { font-size: 12px; }
   gap: 8px;
   margin-bottom: 14px;
 }
-.card strong { font-size: 19px; }
+.card {
+  background: #f5f7fa;
+  border: 1px solid #d9e2ec;
+  border-radius: 6px;
+  padding: 8px;
+}
+.card span { display: block; color: #627d98; font-size: 8px; text-transform: uppercase; letter-spacing: .04em; }
+.card strong { display: block; margin-top: 3px; font-size: 19px; }
 .card.critical { border-color: #8b0000; background: #fff5f5; }
 .card.high { border-color: #c0392b; background: #fff7ed; }
-
-.section { margin-top: 14px; }
-.two-column { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.page-break-before { page-break-before: always; }
 
 table {
   width: 100%;
@@ -69,24 +123,25 @@ th {
   color: #fff;
   font-weight: 700;
   text-align: left;
-  padding: 6px;
-  font-size: 8.5px;
+  padding: 5px;
+  font-size: 8px;
 }
 td {
   border: 1px solid #d9e2ec;
-  padding: 5px;
+  padding: 4.5px;
   vertical-align: top;
   word-break: break-word;
 }
 tr { page-break-inside: avoid; }
 .compact-table td, .compact-table th { font-size: 9px; }
+.overview-table th, .overview-table td { font-size: 8.3px; }
 
 .badge {
   display: inline-block;
   color: #fff;
   border-radius: 12px;
   padding: 2px 7px;
-  font-size: 8px;
+  font-size: 7.5px;
   font-weight: 700;
   text-transform: uppercase;
   white-space: nowrap;

@@ -6,31 +6,33 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="report-header">
-    <div class="brand-row">
-      {% if logo_uri %}<img class="logo" src="{{ logo_uri }}" alt="Organization logo">{% endif %}
-      <div>
-        <h1>Initial Dependency Vulnerability Report</h1>
-        <p class="subtitle">Pipeline scan summary and vulnerable package details</p>
-      </div>
+  <section class="cover-page">
+    <div class="cover-content">
+      {% if logo_uri %}<img class="cover-logo" src="{{ logo_uri }}" alt="Organization logo">{% endif %}
+      <h1>Initial Dependency Vulnerability Report</h1>
+      <p class="cover-subtitle">Pipeline scan summary and dependency vulnerability details</p>
+      <table class="cover-table">
+        <tbody>
+          <tr><th>Artifact</th><td>{{ artifact.display_name | safe_text('Unknown artifact') }}</td></tr>
+          <tr><th>Artifact Type</th><td>{{ artifact.artifact_type | safe_text('unknown') }}</td></tr>
+          <tr><th>Scan Type</th><td>{{ artifact.scan_type | safe_text('unknown') }}</td></tr>
+          <tr><th>Scan Time</th><td>{{ scan_time_display }}</td></tr>
+          <tr><th>Generated</th><td>{{ generated_time_display }}</td></tr>
+        </tbody>
+      </table>
     </div>
-    <div class="meta-grid">
-      <div><span>Artifact</span><strong>{{ artifact.display_name | safe_text('Unknown artifact') }}</strong></div>
-      <div><span>Type</span><strong>{{ artifact.artifact_type | safe_text('unknown') }}</strong></div>
-      <div><span>Scan</span><strong>{{ artifact.scan_type | safe_text('unknown') }}</strong></div>
-      <div><span>Generated</span><strong>{{ report.report_context.generated_at }}</strong></div>
-      <div><span>Vulnerability Source</span><strong>{{ sources.vulnerability_primary_file }}</strong></div>
-      <div><span>SBOM Packages</span><strong>{{ inventory.component_count }}</strong></div>
-    </div>
-  </header>
+  </section>
 
-  <section class="cards">
-    <div class="card"><span>Total Findings</span><strong>{{ summary.total_findings }}</strong></div>
-    <div class="card critical"><span>Critical</span><strong>{{ summary.severity_counts.critical }}</strong></div>
-    <div class="card high"><span>High</span><strong>{{ summary.severity_counts.high }}</strong></div>
-    <div class="card"><span>Affected Packages</span><strong>{{ summary.affected_packages }}</strong></div>
-    <div class="card"><span>Fixable</span><strong>{{ summary.fixability.fixable }}</strong></div>
-    <div class="card"><span>Unique Vulns</span><strong>{{ summary.unique_vulnerabilities }}</strong></div>
+  <section class="section" data-artifact="{{ artifact.display_name | safe_text('Unknown artifact') }}" data-scan-time="{{ scan_time_display }}">
+    <h2>Executive Snapshot</h2>
+    <div class="cards">
+      <div class="card"><span>Total Findings</span><strong>{{ summary.total_findings }}</strong></div>
+      <div class="card critical"><span>Critical</span><strong>{{ summary.severity_counts.critical }}</strong></div>
+      <div class="card high"><span>High</span><strong>{{ summary.severity_counts.high }}</strong></div>
+      <div class="card"><span>Affected Packages</span><strong>{{ summary.affected_packages }}</strong></div>
+      <div class="card"><span>Fixable</span><strong>{{ summary.fixability.fixable }}</strong></div>
+      <div class="card"><span>Unique Vulns</span><strong>{{ summary.unique_vulnerabilities }}</strong></div>
+    </div>
   </section>
 
   <section class="section two-column">
@@ -68,46 +70,26 @@
   </section>
 
   <section class="section">
-    <h2>Top Vulnerabilities</h2>
-    <table>
+    <h2>Vulnerable Package Overview</h2>
+    <p class="section-note">This table summarizes each vulnerable package once. Detailed CVEs and descriptions are available in the package findings section.</p>
+    <table class="overview-table">
       <thead>
         <tr>
-          <th>Severity</th><th>Vulnerability</th><th>Package</th><th>Installed</th><th>Fixed Version</th><th>CVSS</th><th>EPSS</th>
+          <th>Package</th><th>Type</th><th>Severity</th><th>Current Version</th><th>Fixed Version</th><th>CVSS</th><th>EPSS</th><th>CVEs</th>
         </tr>
       </thead>
       <tbody>
-        {% for item in highlights.top_vulnerabilities %}
-        <tr>
-          <td><span class="badge {{ item.severity }}">{{ item.severity }}</span></td>
-          <td>{{ item.vulnerability_id }}</td>
-          <td>{{ item.package_name }}</td>
-          <td>{{ item.package_version }}</td>
-          <td>{{ item.fixed_versions | join(', ') if item.fixed_versions else 'No fixed version reported' }}</td>
-          <td>{{ item.cvss_score | score }}</td>
-          <td>{{ item.epss_score | score }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </section>
-
-  <section class="section">
-    <h2>Recommended Fixes</h2>
-    <table>
-      <thead>
-        <tr><th>Package</th><th>Current Version</th><th>Recommended Fixed Version</th><th>Findings Addressed</th><th>Highest Severity</th></tr>
-      </thead>
-      <tbody>
-        {% for item in highlights.remediation_highlights %}
+        {% for item in package_overview %}
         <tr>
           <td>{{ item.package_name }}</td>
-          <td>{{ item.package_version }}</td>
-          <td>{{ item.fixed_versions | join(', ') }}</td>
-          <td>{{ item.finding_count }}</td>
+          <td>{{ item.package_type }}</td>
           <td><span class="badge {{ item.highest_severity }}">{{ item.highest_severity }}</span></td>
+          <td>{{ item.current_version }}</td>
+          <td>{{ item.fixed_version }}</td>
+          <td>{{ item.cvss | score }}</td>
+          <td>{{ item.epss | score }}</td>
+          <td>{{ item.cve_summary }}</td>
         </tr>
-        {% else %}
-        <tr><td colspan="5" class="muted">No fixed versions were reported for the current findings.</td></tr>
         {% endfor %}
       </tbody>
     </table>
