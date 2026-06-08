@@ -69,7 +69,7 @@ run_reporter() {
     -v "$result_dir:/input:ro" \
     -v "$analysis_dir:/output" \
     "$REPORTER_IMAGE" \
-    python -m analyzer.main /input /output
+    python -m analyzer.main initial --input-dir /input --output-dir /output
 
   fix_permissions "$analysis_dir"
 }

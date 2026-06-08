@@ -1,72 +1,70 @@
-#!/usr/bin/env python3
+"""Reporter Analyzer CLI.
 
-import json
-import os
+Initial mode consumes a single raw scan result directory and writes a stable
+`initial-report-data.json` file. Later modes can reuse the same architecture for
+HTML/PDF and org-data reports.
+"""
+
+import argparse
 import sys
-from datetime import datetime, timezone
 
-from analyzer.loaders import load_inputs
-from analyzer.normalizer import normalize_matches
-from analyzer.remediation import apply_remediation
-from analyzer.summarizer import build_summary
-from analyzer.markdown_writer import write_markdown_report
-from analyzer.deduplicator import deduplicate_records
-
-
-def fix_permissions(path):
-    try:
-        for root, dirs, files in os.walk(path):
-            os.chmod(root, 0o775)
-            for d in dirs:
-                os.chmod(os.path.join(root, d), 0o775)
-            for f in files:
-                os.chmod(os.path.join(root, f), 0o664)
-    except Exception as exc:
-        print(f"WARNING: permission normalization failed for {path}: {exc}")
+from analyzer.builders.initial_report_builder import build_initial_report
+from analyzer.core.exceptions import ReporterError
+from analyzer.loaders.raw_scan_loader import load_raw_scan
+from analyzer.normalizers.grype_normalizer import normalize_grype_matches
+from analyzer.normalizers.sbom_normalizer import build_inventory_summary
+from analyzer.processors.deduplicator import deduplicate_findings
+from analyzer.processors.remediation import remediation_highlights, top_affected_packages
+from analyzer.processors.risk_ranker import rank_findings, top_vulnerabilities
+from analyzer.renderers.json_renderer import write_json_report
 
 
-def main():
-    if len(sys.argv) != 3:
-        print("Usage: python /app/analyzer/main.py <input-dir> <output-dir>")
-        sys.exit(1)
+def _add_initial_parser(subparsers: argparse._SubParsersAction) -> None:
+    parser = subparsers.add_parser("initial", help="Generate initial report data from one raw scan result folder")
+    parser.add_argument("--input-dir", required=True, help="Raw scan result directory")
+    parser.add_argument("--output-dir", required=True, help="Directory where report data will be written")
 
-    input_dir = sys.argv[1]
-    output_dir = sys.argv[2]
 
-    if not os.path.isdir(input_dir):
-        print(f"ERROR: input directory not found: {input_dir}")
-        sys.exit(1)
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="DevSecOps reporter analyzer")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    _add_initial_parser(subparsers)
+    return parser.parse_args(argv)
 
-    os.makedirs(output_dir, exist_ok=True)
 
-    metadata, grype_image, sbom, warnings = load_inputs(input_dir)
+def run_initial(input_dir: str, output_dir: str) -> str:
+    """Run the complete initial report data pipeline."""
+    raw_scan = load_raw_scan(input_dir)
+    findings = normalize_grype_matches(raw_scan.grype, raw_scan.vulnerability_source.primary_file)
+    findings = deduplicate_findings(findings)
+    findings = rank_findings(findings)
 
-    raw_records = normalize_matches(grype_image)
-    records = deduplicate_records(raw_records)
-    records = apply_remediation(records)
-    summary = build_summary(
-        metadata=metadata,
-        records=records,
-        sbom=sbom,
-        warnings=warnings,
-        generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        raw_match_count=len(raw_records),
+    inventory_summary = build_inventory_summary(raw_scan.sbom)
+    report_data = build_initial_report(
+        raw_scan=raw_scan,
+        findings=findings,
+        inventory_summary=inventory_summary,
+        top_vulnerabilities=top_vulnerabilities(findings),
+        top_affected_packages=top_affected_packages(findings),
+        remediation_highlights=remediation_highlights(findings),
     )
 
-    summary_path = os.path.join(output_dir, "analysis-summary.json")
-    report_path = os.path.join(output_dir, "analysis-report.md")
+    return str(write_json_report(report_data, output_dir))
 
-    with open(summary_path, "w", encoding="utf-8") as f:
-        json.dump(summary, f, indent=2, sort_keys=False)
 
-    write_markdown_report(summary, report_path)
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv or sys.argv[1:])
 
-    fix_permissions(output_dir)
-
-    print("Analysis completed successfully")
-    print(f"Summary JSON: {summary_path}")
-    print(f"Markdown report: {report_path}")
+    try:
+        if args.command == "initial":
+            output_path = run_initial(args.input_dir, args.output_dir)
+            print(f"Initial report data written: {output_path}")
+            return 0
+        raise ReporterError(f"Unsupported command: {args.command}")
+    except ReporterError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
