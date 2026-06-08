@@ -3,6 +3,7 @@
 import hashlib
 from typing import Any
 
+from analyzer.normalizers.package_identity import normalize_purl, normalized_package_type
 from analyzer.normalizers.severity import normalize_severity
 
 
@@ -80,7 +81,12 @@ def _finding_id(vulnerability_id: str, package_name: str, package_version: str, 
 
 
 def normalize_grype_matches(grype_data: dict[str, Any], source_file: str) -> list[dict[str, Any]]:
-    """Convert Grype `matches` into stable normalized findings."""
+    """Convert Grype `matches` into stable normalized findings.
+
+    Vulnerability findings are never dropped only because the scanner reports a
+    noisy package type such as `file`. Instead, package type is derived from PURL
+    first and then normalized from the scanner value.
+    """
     findings: list[dict[str, Any]] = []
 
     for match in _as_list(grype_data.get("matches")):
@@ -93,7 +99,8 @@ def normalize_grype_matches(grype_data: dict[str, Any], source_file: str) -> lis
         vulnerability_id = str(vulnerability.get("id") or "")
         package_name = str(artifact.get("name") or "")
         package_version = str(artifact.get("version") or "")
-        package_type = str(artifact.get("type") or "unknown")
+        package_purl = normalize_purl(artifact.get("purl") or "")
+        package_type = normalized_package_type(raw_type=artifact.get("type"), purl=package_purl)
         location = _first_location(artifact)
         fixed_versions = _fixed_versions(vulnerability)
 
@@ -112,7 +119,7 @@ def normalize_grype_matches(grype_data: dict[str, Any], source_file: str) -> lis
                     "name": package_name,
                     "version": package_version,
                     "type": package_type,
-                    "purl": str(artifact.get("purl") or ""),
+                    "purl": package_purl,
                 },
                 "fix": {
                     "fix_available": bool(fixed_versions),
