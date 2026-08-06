@@ -17,6 +17,7 @@ PACKAGE_TYPE_MAP = {
     "deb": "deb",
     "rpm": "rpm",
     "npm": "npm",
+    "pypi": "python",
     "maven": "maven",
     "gem": "gem",
     "cargo": "cargo",

@@ -4,8 +4,8 @@
 FROM --platform=$BUILDPLATFORM debian:bookworm-slim AS binaries
 
 ARG TARGETARCH
-ARG SYFT_VERSION=1.4.1
-ARG GRYPE_VERSION=0.79.4
+ARG SYFT_VERSION=1.46.0
+ARG GRYPE_VERSION=0.115.0
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl ca-certificates \

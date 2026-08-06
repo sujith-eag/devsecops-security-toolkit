@@ -18,6 +18,7 @@ from analyzer.processors.remediation import remediation_highlights, top_affected
 from analyzer.processors.risk_ranker import rank_findings, top_vulnerabilities
 from analyzer.renderers.html_renderer import render_initial_html
 from analyzer.renderers.json_renderer import write_json_report
+from analyzer.renderers.sbom_html_renderer import render_sbom_html
 from analyzer.renderers.pdf_renderer import render_initial_pdf
 
 SUPPORTED_FORMATS = {"json", "html", "pdf"}
@@ -71,6 +72,9 @@ def run_initial(input_dir: str, output_dir: str, formats: list[str], logo_path: 
     report_data = _build_initial_report_data(input_dir)
     generated: list[str] = []
 
+    sbom_html_path = render_sbom_html(input_dir, output / "sbom-inventory.html")
+    generated.append(str(sbom_html_path))
+
     if "json" in formats:
         generated.append(str(write_json_report(report_data, output)))
 
@@ -94,10 +98,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         if args.command == "initial":
-            outputs = run_initial(args.input_dir, args.output_dir, args.formats, args.logo_path)
-            print("Generated report outputs:")
-            for output in outputs:
-                print(f"- {output}")
+            run_initial(args.input_dir, args.output_dir, args.formats, args.logo_path)
             return 0
         raise ReporterError(f"Unsupported command: {args.command}")
     except ReporterError as exc:
